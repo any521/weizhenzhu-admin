@@ -1,0 +1,77 @@
+// 红色系 PC 管理后台设计变量
+
+// 主色
+$primary: #FF4B33;
+$primary-light: #FF6B6B;
+$primary-dark: #E53935;
+$primary-text: #FFFFFF;
+
+// 辅助色
+$secondary: #FFC300;
+$secondary-light: #FFD54F;
+$accent: #FF9900;
+
+// 功能色
+$success: #00C853;
+$danger: #FF4B33;
+$warning: #FF9800;
+$info: #2196F3;
+
+// 中性色
+$text: #333333;
+$text-light: #666666;
+$text-muted: #999999;
+$border: #E8E8E8;
+$border-light: #F0F0F0;
+$bg: #F5F7FA;
+$card: #FFFFFF;
+
+// 侧边栏
+$sidebar-bg: #FFFFFF;
+$sidebar-dark-bg: #1D2129;
+$sidebar-width: 220px;
+$sidebar-collapsed-width: 64px;
+$sidebar-text: #4E5969;
+$sidebar-active-text: #FF4B33;
+$sidebar-active-bg: #FFF5F5;
+$sidebar-hover-bg: #F7F8FA;
+
+// 顶栏
+$header-height: 64px;
+$header-bg: #FFFFFF;
+
+// 标签页
+$tab-height: 40px;
+
+// 间距
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// 圆角
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-round: 50%;
+
+// 阴影
+$shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+$shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+$shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+$shadow-red: 0 4px 12px rgba(255, 75, 51, 0.12);
+
+// 字体
+$font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-md: 14px;
+$font-size-lg: 16px;
+$font-size-xl: 18px;
+$font-size-xxl: 20px;
+
+// 过渡
+$transition-fast: 0.2s ease;
+$transition-base: 0.3s ease;

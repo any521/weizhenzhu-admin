@@ -1,0 +1,15 @@
+# 管理端 .dockerignore
+node_modules/
+dist/
+.idea/
+*.log
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+*.md
+.vscode/
+screenshots/
+login_snapshot.txt
+extract_screenshot.py
+screenshot_home.png
