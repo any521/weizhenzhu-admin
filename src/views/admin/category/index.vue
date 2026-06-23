@@ -1,27 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed } from 'vue'
 import { Plus, Search, RefreshRight, Download, Delete, Star } from '@element-plus/icons-vue'
-import {
-  Food,
-  IceCream,
-  Coffee,
-  Apple,
-  Burger,
-  Sugar,
-  ForkSpoon,
-  KnifeFork,
-  Dessert,
-  IceDrink,
-  HotWater,
-  Shop,
-  FirstAidKit,
-  Basketball,
-  Van,
-  Service,
-  Present,
-  Star as StarIcon,
-  More,
-} from '@element-plus/icons-vue'
 import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -32,28 +11,28 @@ import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { useSavedQueries, type SavedQuery } from '@/composables/useSavedQueries'
 import type { Category, CategoryCreateDTO } from '@/api/types'
 import type { FormInstance, FormRules } from 'element-plus'
+import AdminCategoryIcon from '@/components/AdminCategoryIcon.vue'
 
-// 预设图标列表（Element Plus 图标组件）
+// 图标列表（与客户端 CategoryIcon 保持一致）
 const iconList = [
-  { name: 'Food', component: Food },
-  { name: 'IceCream', component: IceCream },
-  { name: 'Coffee', component: Coffee },
-  { name: 'Apple', component: Apple },
-  { name: 'Burger', component: Burger },
-  { name: 'Sugar', component: Sugar },
-  { name: 'ForkSpoon', component: ForkSpoon },
-  { name: 'KnifeFork', component: KnifeFork },
-  { name: 'Dessert', component: Dessert },
-  { name: 'IceDrink', component: IceDrink },
-  { name: 'HotWater', component: HotWater },
-  { name: 'Shop', component: Shop },
-  { name: 'FirstAidKit', component: FirstAidKit },
-  { name: 'Basketball', component: Basketball },
-  { name: 'Van', component: Van },
-  { name: 'Service', component: Service },
-  { name: 'Present', component: Present },
-  { name: 'Star', component: StarIcon },
-  { name: 'More', component: More },
+  { name: 'meishi', label: '美食' },
+  { name: 'breakfast', label: '早餐' },
+  { name: 'dessert', label: '甜品' },
+  { name: 'fruit', label: '水果' },
+  { name: 'burger', label: '汉堡' },
+  { name: 'coffee', label: '咖啡' },
+  { name: 'noodles', label: '面食' },
+  { name: 'bbq', label: '烧烤' },
+  { name: 'hotpot', label: '火锅' },
+  { name: 'sushi', label: '寿司' },
+  { name: 'salad', label: '轻食' },
+  { name: 'pharmacy', label: '医药' },
+  { name: 'store', label: '商店' },
+  { name: 'cake', label: '蛋糕' },
+  { name: 'flower', label: '鲜花' },
+  { name: 'brand', label: '品牌' },
+  { name: 'errand', label: '跑腿' },
+  { name: 'more', label: '更多' },
 ]
 
 // 预设颜色列表
@@ -103,7 +82,7 @@ const isEdit = computed(() => !!form.id)
 const form = reactive<CategoryCreateDTO>({
   id: undefined,
   name: '',
-  icon: 'Food',
+  icon: 'meishi',
   color: '#FF6B35',
   sort: 1,
   status: 1,
@@ -135,9 +114,9 @@ const { savedQueries, saveQuery, deleteQuery, applyQuery } = useSavedQueries('ad
 const saveQueryVisible = ref(false)
 const saveQueryName = ref('')
 
-// 获取图标组件
-function getIconComponent(name: string) {
-  return iconList.find((item) => item.name === name)?.component || More
+// 获取图标名称
+function getIconName(name: string) {
+  return iconList.find((item) => item.name === name)?.name || 'more'
 }
 
 // 加载分类列表
@@ -415,9 +394,7 @@ onMounted(loadList)
 
         <template #cell-icon="{ row }">
           <div class="icon-preview" :style="{ backgroundColor: (row as any).color || '#FF6B35' }">
-            <el-icon :size="20" color="#fff">
-              <component :is="getIconComponent(row.icon)" />
-            </el-icon>
+            <AdminCategoryIcon :name="row.icon || 'more'" :size="20" color="#fff" />
           </div>
         </template>
 
@@ -467,10 +444,9 @@ onMounted(loadList)
               :class="{ 'is-active': form.icon === item.name }"
               :style="{ backgroundColor: form.icon === item.name ? form.color : '' }"
               @click="form.icon = item.name"
+              :title="item.label"
             >
-              <el-icon :size="20" :color="form.icon === item.name ? '#fff' : '#666'">
-                <component :is="item.component" />
-              </el-icon>
+              <AdminCategoryIcon :name="item.name" :size="20" :color="form.icon === item.name ? '#fff' : '#666'" />
             </div>
           </div>
         </el-form-item>
@@ -484,7 +460,7 @@ onMounted(loadList)
               :style="{ backgroundColor: color }"
               @click="form.color = color"
             >
-              <el-icon v-if="form.color === color" :size="14" color="#fff"><StarIcon /></el-icon>
+              <el-icon v-if="form.color === color" :size="14" color="#fff"><Star /></el-icon>
             </div>
             <el-color-picker v-model="form.color" class="color-picker__custom" />
           </div>
@@ -492,9 +468,7 @@ onMounted(loadList)
         <el-form-item label="预览">
           <div class="preview-box">
             <div class="preview-box__icon" :style="{ backgroundColor: form.color }">
-              <el-icon :size="28" color="#fff">
-                <component :is="getIconComponent(form.icon)" />
-              </el-icon>
+              <AdminCategoryIcon :name="form.icon || 'more'" :size="28" color="#fff" />
             </div>
             <span class="preview-box__name">{{ form.name || '分类名称' }}</span>
           </div>

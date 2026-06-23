@@ -1444,4 +1444,54 @@ export const api = {
       })
     },
   },
+
+  // 商家端回收站
+  merchantRecycleBin: {
+    async getTypes(): Promise<ApiResult<RecycleBinTypes>> {
+      return request<ApiResult<RecycleBinTypes>>({
+        method: 'get',
+        url: '/api/merchant/recycle-bin/types',
+      })
+    },
+
+    async getList(type: string, params: { page?: number; pageSize?: number; keyword?: string } = {}): Promise<ApiResult<PaginationResult<RecycleBinItem>>> {
+      const { page = 1, pageSize = 10, keyword } = params
+      const res = await request<ApiResult<PageResultBackend<RecycleBinItem>>>({
+        method: 'get',
+        url: `/api/merchant/recycle-bin/${type}`,
+        params: { page, pageSize, keyword },
+      })
+      return { ...res, data: normalizePage(res.data) }
+    },
+
+    async restore(type: string, id: string): Promise<ApiResult<null>> {
+      return request<ApiResult<null>>({
+        method: 'put',
+        url: `/api/merchant/recycle-bin/${type}/${id}/restore`,
+      })
+    },
+
+    async physicalDelete(type: string, id: string): Promise<ApiResult<null>> {
+      return request<ApiResult<null>>({
+        method: 'delete',
+        url: `/api/merchant/recycle-bin/${type}/${id}`,
+      })
+    },
+
+    async batchRestore(type: string, ids: string[]): Promise<ApiResult<null>> {
+      return request<ApiResult<null>>({
+        method: 'put',
+        url: `/api/merchant/recycle-bin/${type}/batch-restore`,
+        data: ids,
+      })
+    },
+
+    async batchPhysicalDelete(type: string, ids: string[]): Promise<ApiResult<null>> {
+      return request<ApiResult<null>>({
+        method: 'delete',
+        url: `/api/merchant/recycle-bin/${type}/batch`,
+        data: ids,
+      })
+    },
+  },
 }

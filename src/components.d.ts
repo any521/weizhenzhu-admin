@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AdminCategoryIcon: typeof import('./components/AdminCategoryIcon.vue')['default']
     AppCard: typeof import('./components/AppCard.vue')['default']
     AppEmpty: typeof import('./components/AppEmpty.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']

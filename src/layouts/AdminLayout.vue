@@ -47,6 +47,7 @@ const merchantMenus: MenuItem[] = [
   { title: '店铺设置', path: '/merchant/settings', icon: 'Setting' },
   { title: '财务中心', path: '/merchant/finance', icon: 'Money' },
   { title: '数据统计', path: '/merchant/stats', icon: 'TrendCharts' },
+  { title: '回收站', path: '/merchant/recycle-bin', icon: 'Delete' },
 ]
 
 const adminMenus: MenuItem[] = [

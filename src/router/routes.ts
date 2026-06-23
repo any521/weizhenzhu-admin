@@ -18,6 +18,7 @@ import MerchantCoupon from '@/views/merchant/coupon/index.vue'
 import MerchantSettings from '@/views/merchant/settings/index.vue'
 import MerchantFinance from '@/views/merchant/finance/index.vue'
 import MerchantStats from '@/views/merchant/stats/index.vue'
+import MerchantRecycleBin from '@/views/merchant/recycle-bin/index.vue'
 
 // 管理员端页面
 import AdminDashboard from '@/views/admin/dashboard/index.vue'
@@ -74,6 +75,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'settings', name: 'MerchantSettings', component: MerchantSettings, meta: { title: '店铺设置' } },
       { path: 'finance', name: 'MerchantFinance', component: MerchantFinance, meta: { title: '财务中心' } },
       { path: 'stats', name: 'MerchantStats', component: MerchantStats, meta: { title: '数据统计' } },
+      { path: 'recycle-bin', name: 'MerchantRecycleBin', component: MerchantRecycleBin, meta: { title: '回收站' } },
     ],
   },
   {

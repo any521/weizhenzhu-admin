@@ -150,9 +150,7 @@ onMounted(() => {
 <template>
   <div class="merchant-promotion">
     <app-header title="促销管理">
-      <template #right>
-        <el-button type="primary" :icon="Plus" @click="handleAdd">新增活动</el-button>
-      </template>
+      <el-button type="primary" :icon="Plus" @click="handleAdd">新增活动</el-button>
     </app-header>
 
     <app-card>
