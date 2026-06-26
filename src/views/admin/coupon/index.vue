@@ -343,14 +343,14 @@ function formatCouponValue(row: Coupon) {
     return `${(row.discount * 10).toFixed(1)}折`
   }
   if (row.amount != null) {
-    return `¥${formatAmount(row.amount)}`
+    return formatAmount(row.amount)
   }
   return '-'
 }
 
 function formatThreshold(row: Coupon) {
   if (row.threshold != null && row.threshold > 0) {
-    return `满¥${formatAmount(row.threshold)}可用`
+    return `满${formatAmount(row.threshold)}可用`
   }
   return '无门槛'
 }

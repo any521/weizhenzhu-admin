@@ -551,6 +551,7 @@ export const api = {
       current?: number
       size?: number
       categoryId?: number
+      platformCategoryId?: number
       keyword?: string
       merchantId?: number
       status?: number
@@ -561,6 +562,7 @@ export const api = {
         current = 1,
         size = 10,
         categoryId,
+        platformCategoryId,
         keyword,
         merchantId,
         status,
@@ -571,7 +573,7 @@ export const api = {
       const res = await request<ApiResult<PageResultBackend<Dish> | PaginationResult<Dish>>>({
         method: 'get',
         url: baseUrl,
-        params: { current, size, categoryId, keyword, merchantId, status, sortField, sortOrder },
+        params: { current, size, categoryId, platformCategoryId, keyword, merchantId, status, sortField, sortOrder },
       })
       return { ...res, data: normalizePage(res.data) }
     },
@@ -727,6 +729,14 @@ export const api = {
       })
     },
 
+    /** 获取平台分类列表（商家端用于关联大分类） */
+    async getPlatformList(): Promise<ApiResult<Category[]>> {
+      return request<ApiResult<Category[]>>({
+        method: 'get',
+        url: '/api/merchant/categories/platform',
+      })
+    },
+
     /** 导出分类 */
     async export(params: ExportParams = {}): Promise<Blob> {
       const res = await request<Blob>({
@@ -865,6 +875,52 @@ export const api = {
       return request<ApiResult<{ hours: string[]; values: number[] }>>({
         method: 'get',
         url: `/api/${prefix()}/stats/hourly`,
+      })
+    },
+  },
+
+  // 管理员多维度统计（仅admin可用）
+  adminStats: {
+    async dashboard(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/dashboard',
+        params: { days },
+      })
+    },
+    async user(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/user',
+        params: { days },
+      })
+    },
+    async merchant(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/merchant',
+        params: { days },
+      })
+    },
+    async order(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/order',
+        params: { days },
+      })
+    },
+    async rider(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/rider',
+        params: { days },
+      })
+    },
+    async finance(days = 7): Promise<ApiResult<any>> {
+      return request<ApiResult<any>>({
+        method: 'get',
+        url: '/api/admin/stats/finance',
+        params: { days },
       })
     },
   },
@@ -1129,11 +1185,12 @@ export const api = {
       sortOrder?: 'asc' | 'desc'
     } = {}): Promise<ApiResult<PaginationResult<OperationLog>>> {
       const { page = 1, pageSize = 10, operator, module, action, result, startDate, endDate, sortField, sortOrder } = params
-      return request<ApiResult<PaginationResult<OperationLog>>>({
+      const res = await request<ApiResult<PageResultBackend<OperationLog> | PaginationResult<OperationLog>>>({
         method: 'get',
         url: '/api/admin/logs',
         params: { page, pageSize, operator, module, action, result, startDate, endDate, sortField, sortOrder },
       })
+      return { ...res, data: normalizePage(res.data) }
     },
 
     async export(params: ExportParams = {}): Promise<Blob> {
@@ -1156,10 +1213,11 @@ export const api = {
       })
     },
 
-    async getChartData(): Promise<ApiResult<ChartData>> {
+    async getChartData(type: number = 1): Promise<ApiResult<ChartData>> {
       return request<ApiResult<ChartData>>({
         method: 'get',
         url: `/api/${prefix()}/finance/chart`,
+        params: { type },
       })
     },
 
@@ -1221,6 +1279,54 @@ export const api = {
         method: 'put',
         url: '/api/merchant/settings',
         data,
+      })
+    },
+  },
+
+  // 个人资料
+  profile: {
+    // 获取个人资料
+    async get(): Promise<ApiResult<any>> {
+      const type = currentUserType()
+      let url = '/api/admin/profile'
+      if (type === 'merchant') {
+        url = '/api/merchant/auth/me'
+      }
+      return request<ApiResult<any>>({
+        method: 'get',
+        url,
+      })
+    },
+
+    // 更新个人资料
+    async update(data: { nickname?: string; realName?: string; avatar?: string; phone?: string; email?: string; contactPerson?: string }): Promise<ApiResult<null>> {
+      const type = currentUserType()
+      let url = '/api/admin/profile'
+      if (type === 'merchant') {
+        // 商家端通过 settings 更新 logo/name/contactPerson/phone
+        return api.merchantSettings.save({
+          name: data.nickname,
+          logo: data.avatar,
+          contactPerson: data.realName || data.contactPerson,
+          phone: data.phone,
+        })
+      }
+      return request<ApiResult<null>>({
+        method: 'put',
+        url,
+        data,
+      })
+    },
+
+    // 修改密码
+    async updatePassword(oldPassword: string, newPassword: string): Promise<ApiResult<null>> {
+      const type = currentUserType()
+      let url = '/api/admin/profile/password'
+      // TODO: 如果商家/骑手也有修改密码接口可以在这里添加
+      return request<ApiResult<null>>({
+        method: 'put',
+        url,
+        data: { oldPassword, newPassword },
       })
     },
   },
@@ -1495,3 +1601,5 @@ export const api = {
     },
   },
 }
+
+export default api

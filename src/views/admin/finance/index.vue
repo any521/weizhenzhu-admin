@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, nextTick, computed, onBeforeUnmount } from 'vue'
 import { Search, RefreshRight, Download, Star } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
@@ -28,6 +29,7 @@ const page = ref(1)
 const pageSize = ref(10)
 const chartRef = ref<HTMLDivElement>()
 let chartInstance: echarts.ECharts | null = null
+const chartType = ref(1) // 1=7天 2=14天 3=30天
 
 // 搜索表单
 interface SearchForm {
@@ -88,19 +90,22 @@ function buildQueryParams() {
   }
 }
 
-function initChart() {
-  if (!chartRef.value || reportList.value.length === 0) return
+function initChart(chartData?: { dates?: string[]; series?: { name: string; data: number[] }[] }) {
+  if (!chartRef.value) return
   if (chartInstance) {
     chartInstance.dispose()
   }
   chartInstance = echarts.init(chartRef.value)
+  const dates = chartData?.dates || []
+  const seriesData = chartData?.series || []
+  const colors = ['#FF4B33', '#FF9800', '#00C853']
   const option: echarts.EChartsOption = {
     tooltip: { trigger: 'axis' },
     legend: { data: ['流水', '抽成', '结算'], bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '10%', top: '15%', containLabel: true },
+    grid: { left: '3%', right: '4%', bottom: '12%', top: '15%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: reportList.value.map((item) => item.date),
+      data: dates.length > 0 ? dates : ['暂无数据'],
       axisLine: { lineStyle: { color: '#E8E8E8' } },
       axisLabel: { color: '#666' },
     },
@@ -109,36 +114,41 @@ function initChart() {
       axisLabel: { color: '#666' },
       splitLine: { lineStyle: { color: '#F0F0F0' } },
     },
-    series: [
-      {
-        name: '流水',
-        type: 'line',
-        data: reportList.value.map((item) => item.income),
-        smooth: true,
-        itemStyle: { color: '#FF4B33' },
-        lineStyle: { width: 3 },
-      },
-      {
-        name: '抽成',
-        type: 'line',
-        data: reportList.value.map((item) => item.commission),
-        smooth: true,
-        itemStyle: { color: '#FF9800' },
-      },
-      {
-        name: '结算',
-        type: 'line',
-        data: reportList.value.map((item) => item.settlement),
-        smooth: true,
-        itemStyle: { color: '#00C853' },
-      },
+    series: seriesData.length > 0 ? seriesData.map((s, i) => ({
+      name: s.name,
+      type: 'line',
+      data: s.data,
+      smooth: true,
+      itemStyle: { color: colors[i] || '#FF4B33' },
+      lineStyle: { width: i === 0 ? 3 : 2 },
+    })) : [
+      { name: '流水', type: 'line', data: [], smooth: true, itemStyle: { color: '#FF4B33' }, lineStyle: { width: 3 } },
+      { name: '抽成', type: 'line', data: [], smooth: true, itemStyle: { color: '#FF9800' } },
+      { name: '结算', type: 'line', data: [], smooth: true, itemStyle: { color: '#00C853' } },
     ],
+    graphic: dates.length === 0 ? [{
+      type: 'text',
+      left: 'center',
+      top: 'middle',
+      style: { text: '暂无数据', fill: '#999', fontSize: 14 }
+    }] : undefined,
   }
   chartInstance.setOption(option)
 }
 
 function handleResize() {
   chartInstance?.resize()
+}
+
+async function loadChartData() {
+  try {
+    const chartRes = await api.finance.getChartData(chartType.value)
+    await nextTick()
+    initChart(chartRes.data)
+  } catch (e) {
+    console.error('加载图表数据失败', e)
+    initChart()
+  }
 }
 
 async function loadData() {
@@ -149,13 +159,25 @@ async function loadData() {
       api.finance.getReport(buildQueryParams()),
     ])
     stats.value = statsRes.data
-    reportList.value = reportRes.data.list
-    total.value = reportRes.data.total
+    reportList.value = reportRes.data.list || []
+    total.value = reportRes.data.total || 0
+    loadChartData()
+  } catch (e: any) {
+    console.error('加载财务数据失败', e)
+    ElMessage.error(e?.message || '加载财务数据失败')
+    stats.value = { todayIncome: 0, todayOrderCount: 0, weekIncome: 0, monthIncome: 0, totalIncome: 0, refundAmount: 0 }
+    reportList.value = []
+    total.value = 0
     await nextTick()
-    initChart()
+    initChart() // 即使失败也初始化空图表
   } finally {
     loading.value = false
   }
+}
+
+function switchChartType(type: number) {
+  chartType.value = type
+  loadChartData()
 }
 
 // 搜索
@@ -192,10 +214,10 @@ function handleSortChange({ prop, order }: { prop: string; order: 'ascending' | 
 // 导出
 const exportColumns: ExportColumn[] = [
   { prop: 'date', label: '日期' },
-  { prop: 'orderCount', label: '订单数' },
-  { prop: 'income', label: '流水', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '0.00') },
-  { prop: 'commission', label: '抽成', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '0.00') },
-  { prop: 'settlement', label: '结算', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '0.00') },
+  { prop: 'orderCount', label: '订单数', formatter: (_row, v) => formatNumber(v) },
+  { prop: 'income', label: '流水', formatter: (_row, v) => formatAmount(v) },
+  { prop: 'commission', label: '抽成', formatter: (_row, v) => formatAmount(v) },
+  { prop: 'settlement', label: '结算', formatter: (_row, v) => formatAmount(v) },
 ]
 
 async function handleExport(format: 'xlsx' | 'csv') {
@@ -333,6 +355,13 @@ onBeforeUnmount(() => {
 
     <!-- 趋势图 -->
     <AppCard title="财务趋势" class="chart-card">
+      <template #extra>
+        <el-radio-group v-model="chartType" size="small" @change="switchChartType">
+          <el-radio-button :value="1">近7天</el-radio-button>
+          <el-radio-button :value="2">近14天</el-radio-button>
+          <el-radio-button :value="3">近30天</el-radio-button>
+        </el-radio-group>
+      </template>
       <div ref="chartRef" class="finance-chart" />
     </AppCard>
 

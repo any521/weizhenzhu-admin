@@ -5,7 +5,7 @@ import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable, { type TableColumn } from '@/components/AppTable.vue'
-import { formatAmount, formatDate, mapStatus } from '@/utils/format'
+import { formatAmount, formatDate, mapStatus, maskPhone } from '@/utils/format'
 import { OrderStatusMap, OrderStatus } from '@/utils/constants'
 import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { downloadBlob } from '@/utils/download'
@@ -52,11 +52,11 @@ const currentRow = ref<Order | null>(null)
 const columns: TableColumn[] = [
   { prop: 'orderNo', label: '订单号', minWidth: 180, showOverflowTooltip: true },
   { prop: 'merchantName', label: '商家', minWidth: 140, showOverflowTooltip: true },
-  { prop: 'userName', label: '用户', minWidth: 120 },
+  { prop: 'userName', label: '用户', minWidth: 160 },
   { prop: 'payAmount', label: '支付金额', width: 120, sortable: true },
   { prop: 'payType', label: '支付方式', width: 110 },
   { prop: 'status', label: '状态', width: 110 },
-  { prop: 'createTime', label: '下单时间', minWidth: 170, sortable: true },
+  { prop: 'createdAt', label: '下单时间', minWidth: 170, sortable: true },
   { prop: 'completeTime', label: '完成时间', minWidth: 170, sortable: true },
 ]
 
@@ -161,7 +161,7 @@ const exportColumns: ExportColumn[] = [
   { prop: 'discountAmount', label: '优惠金额', formatter: (_row, v) => formatAmount(v) },
   { prop: 'payType', label: '支付方式', formatter: (_row, v) => getPayTypeText(v) },
   { prop: 'status', label: '订单状态', formatter: (_row, v) => mapStatus(v, OrderStatusMap) },
-  { prop: 'createTime', label: '下单时间', formatter: (_row, v) => formatDate(v) },
+  { prop: 'createdAt', label: '下单时间', formatter: (_row, v) => formatDate(v) },
   { prop: 'completeTime', label: '完成时间', formatter: (_row, v) => formatDate(v) },
 ]
 
@@ -347,6 +347,13 @@ onMounted(loadList)
         @size-change="loadList"
         @sort-change="handleSortChange"
       >
+        <template #cell-userName="{ row }">
+          <div class="user-info">
+            <span class="user-name">{{ row.userNickname || row.userName || '-' }}</span>
+            <span v-if="row.userPhone" class="user-phone">{{ maskPhone(row.userPhone) }}</span>
+          </div>
+        </template>
+
         <template #cell-payAmount="{ row }">
           <span class="amount">{{ formatAmount(row.payAmount) }}</span>
         </template>
@@ -364,8 +371,8 @@ onMounted(loadList)
           </el-tag>
         </template>
 
-        <template #cell-createTime="{ row }">
-          {{ formatDate(row.createTime) }}
+        <template #cell-createdAt="{ row }">
+          {{ formatDate(row.createdAt || row.createTime) }}
         </template>
 
         <template #cell-completeTime="{ row }">
@@ -413,7 +420,7 @@ onMounted(loadList)
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="备注" :span="2">{{ currentRow.remark || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="下单时间">{{ formatDate(currentRow.createTime) }}</el-descriptions-item>
+        <el-descriptions-item label="下单时间">{{ formatDate(currentRow.createdAt || currentRow.createTime) }}</el-descriptions-item>
         <el-descriptions-item label="支付时间">{{ formatDate(currentRow.payTime) }}</el-descriptions-item>
         <el-descriptions-item label="完成时间">{{ formatDate(currentRow.completeTime) }}</el-descriptions-item>
         <el-descriptions-item label="取消时间">{{ formatDate(currentRow.cancelTime) }}</el-descriptions-item>
@@ -459,6 +466,17 @@ onMounted(loadList)
   .amount {
     color: $primary;
     font-weight: 600;
+  }
+
+  .user-info {
+    .user-name {
+      font-weight: 500;
+    }
+    .user-phone {
+      display: block;
+      font-size: $font-size-xs;
+      color: $text-muted;
+    }
   }
 
   .text-muted {

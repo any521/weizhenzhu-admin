@@ -19,6 +19,7 @@ import MerchantSettings from '@/views/merchant/settings/index.vue'
 import MerchantFinance from '@/views/merchant/finance/index.vue'
 import MerchantStats from '@/views/merchant/stats/index.vue'
 import MerchantRecycleBin from '@/views/merchant/recycle-bin/index.vue'
+import Profile from '@/views/profile/index.vue'
 
 // 管理员端页面
 import AdminDashboard from '@/views/admin/dashboard/index.vue'
@@ -76,6 +77,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'finance', name: 'MerchantFinance', component: MerchantFinance, meta: { title: '财务中心' } },
       { path: 'stats', name: 'MerchantStats', component: MerchantStats, meta: { title: '数据统计' } },
       { path: 'recycle-bin', name: 'MerchantRecycleBin', component: MerchantRecycleBin, meta: { title: '回收站' } },
+      { path: 'profile', name: 'MerchantProfile', component: Profile, meta: { title: '个人设置' } },
     ],
   },
   {
@@ -100,6 +102,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'logs', name: 'AdminLog', component: AdminLog, meta: { title: '操作日志' } },
       { path: 'recycle-bin', name: 'AdminRecycleBin', component: AdminRecycleBin, meta: { title: '回收站' } },
       { path: 'system', name: 'AdminSystem', component: AdminSystem, meta: { title: '系统设置' } },
+      { path: 'profile', name: 'AdminProfile', component: Profile, meta: { title: '个人设置' } },
     ],
   },
   {

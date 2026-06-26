@@ -194,8 +194,8 @@ function beforeAvatarUpload(rawFile: File): boolean {
     ElMessage.error('头像只支持 JPG/PNG/WebP 格式')
     return false
   }
-  if (rawFile.size > 2 * 1024 * 1024) {
-    ElMessage.error('头像大小不能超过 2MB')
+  if (rawFile.size > 10 * 1024 * 1024) {
+    ElMessage.error('头像大小不能超过 10MB')
     return false
   }
   return true

@@ -4,7 +4,7 @@ import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable from '@/components/AppTable.vue'
-import { mapStatus } from '@/utils/format'
+import { mapStatus, maskPhone } from '@/utils/format'
 import { AuditStatusMap, AuditStatus } from '@/utils/constants'
 import type { Merchant } from '@/api/types'
 
@@ -81,11 +81,17 @@ onMounted(loadList)
         @size-change="loadList"
       >
         <el-table-column prop="id" label="商家ID" width="90" />
-        <el-table-column prop="name" label="商家名称" min-width="150" />
+        <el-table-column prop="name" label="商家名称" min-width="150">
+          <template #default="{ row }">{{ row.name || '未命名' }}</template>
+        </el-table-column>
         <el-table-column prop="contactPerson" label="负责人" min-width="120" />
-        <el-table-column prop="phone" label="联系电话" min-width="130" />
+        <el-table-column prop="phone" label="联系电话" min-width="130">
+          <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
+        </el-table-column>
         <el-table-column prop="address" label="地址" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="qualification" label="资质信息" min-width="240" show-overflow-tooltip />
+        <el-table-column prop="qualification" label="资质信息" min-width="240" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.qualification || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="auditStatus" label="审核状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.auditStatus === AuditStatus.APPROVED ? 'success' : row.auditStatus === AuditStatus.REJECTED ? 'danger' : 'warning'">

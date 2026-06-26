@@ -19,13 +19,14 @@ export function formatDateOnly(date?: string | number | Date): string {
 
 /**
  * 金额格式化
- * @param amount 金额（分）
+ * @param amount 金额（元）
  * @param prefix 前缀
  */
-export function formatAmount(amount?: number, prefix = '¥'): string {
-  if (amount === undefined || amount === null) return '-'
-  const value = (amount / 100).toFixed(2)
-  return `${prefix}${value}`
+export function formatAmount(amount?: number | string, prefix = '¥'): string {
+  if (amount === undefined || amount === null || amount === '') return '-'
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (isNaN(num)) return '-'
+  return `${prefix}${num.toFixed(2)}`
 }
 
 /**

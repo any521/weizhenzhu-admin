@@ -14,6 +14,7 @@ defineProps<Props>()
       <p v-if="subtitle" class="app-header__subtitle">{{ subtitle }}</p>
     </div>
     <div class="app-header__right">
+      <slot name="right" />
       <slot />
     </div>
   </div>

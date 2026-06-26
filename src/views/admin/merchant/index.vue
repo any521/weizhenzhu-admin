@@ -5,7 +5,7 @@ import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable, { type TableColumn } from '@/components/AppTable.vue'
-import { formatDate, maskPhone, mapStatus } from '@/utils/format'
+import { formatDate, formatNumber, maskPhone, mapStatus } from '@/utils/format'
 import { CommonStatusMap, AuditStatusMap } from '@/utils/constants'
 import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { downloadBlob } from '@/utils/download'
@@ -144,9 +144,9 @@ const columns: TableColumn[] = [
   { prop: 'address', label: '地址', minWidth: 200, showOverflowTooltip: true },
   { prop: 'auditStatus', label: '审核状态', width: 110 },
   { prop: 'rating', label: '评分', width: 90, sortable: true },
-  { prop: 'monthlySales', label: '月销', width: 90, sortable: true },
-  { prop: 'operateStatus', label: '状态', width: 90 },
-  { prop: 'createTime', label: '入驻时间', minWidth: 170, sortable: true },
+  { prop: 'monthSales', label: '月销', width: 90, sortable: true },
+  { prop: 'operateStatus', label: '状态', width: 100 },
+  { prop: 'createTime', label: '创建时间', minWidth: 170, sortable: true },
 ]
 
 // 查询条件保存
@@ -398,8 +398,8 @@ const exportColumns: ExportColumn[] = [
   { prop: 'auditStatus', label: '审核状态', formatter: (_row, v) => mapStatus(v, AuditStatusMap) },
   { prop: 'operateStatus', label: '状态', formatter: (_row, v) => (v === 1 ? '启用' : '禁用') },
   { prop: 'rating', label: '评分' },
-  { prop: 'monthlySales', label: '月销' },
-  { prop: 'createTime', label: '入驻时间', formatter: (_row, v) => formatDate(v) },
+  { prop: 'monthSales', label: '月销' },
+  { prop: 'createTime', label: '创建时间', formatter: (_row, v) => formatDate(v) },
 ]
 
 async function handleExport(format: 'xlsx' | 'csv') {
@@ -457,6 +457,26 @@ function handleApplyQuery(item: SavedQuery) {
 function handleDeleteQuery(item: SavedQuery) {
   deleteQuery(item.id)
   ElMessage.success('已删除')
+}
+
+// 商家综合状态文字（待审核/营业中/已禁用/已驳回）
+function getMerchantStatusText(row: Merchant): string {
+  if (row.auditStatus === 0) return '待审核'
+  if (row.auditStatus === 2) return '已驳回'
+  if (row.auditStatus === 1) {
+    return row.operateStatus === 1 ? '营业中' : '已禁用'
+  }
+  return '未知'
+}
+
+// 商家综合状态标签类型
+function getMerchantStatusType(row: Merchant): 'success' | 'warning' | 'danger' | 'info' {
+  if (row.auditStatus === 0) return 'warning'
+  if (row.auditStatus === 2) return 'danger'
+  if (row.auditStatus === 1) {
+    return row.operateStatus === 1 ? 'success' : 'info'
+  }
+  return 'info'
 }
 
 onMounted(() => {
@@ -566,6 +586,10 @@ onMounted(() => {
           </el-button>
         </template>
 
+        <template #cell-name="{ row }">
+          <span>{{ row.name || '未命名' }}</span>
+        </template>
+
         <template #cell-phone="{ row }">
           {{ maskPhone(row.phone) }}
         </template>
@@ -577,13 +601,17 @@ onMounted(() => {
         </template>
 
         <template #cell-operateStatus="{ row }">
-          <el-tag :type="row.operateStatus === 1 ? 'success' : 'danger'">
-            {{ mapStatus(row.operateStatus, CommonStatusMap) }}
+          <el-tag :type="getMerchantStatusType(row)">
+            {{ getMerchantStatusText(row) }}
           </el-tag>
         </template>
 
         <template #cell-rating="{ row }">
           {{ row.rating ? row.rating.toFixed(1) : '-' }}
+        </template>
+
+        <template #cell-monthSales="{ row }">
+          {{ formatNumber(row.monthSales ?? row.monthlySales ?? 0) }}
         </template>
 
         <template #cell-createTime="{ row }">
@@ -619,12 +647,12 @@ onMounted(() => {
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="currentRow.operateStatus === 1 ? 'success' : 'danger'">
-            {{ mapStatus(currentRow.operateStatus, CommonStatusMap) }}
+          <el-tag :type="getMerchantStatusType(currentRow)">
+            {{ getMerchantStatusText(currentRow) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="评分">{{ currentRow.rating ? currentRow.rating.toFixed(1) : '-' }}</el-descriptions-item>
-        <el-descriptions-item label="月售">{{ currentRow.monthlySales }}</el-descriptions-item>
+        <el-descriptions-item label="月售">{{ formatNumber(currentRow.monthSales ?? currentRow.monthlySales ?? 0) }}</el-descriptions-item>
         <el-descriptions-item label="入驻时间" :span="2">{{ formatDate(currentRow.createTime) }}</el-descriptions-item>
         <el-descriptions-item label="资质信息" :span="2">{{ currentRow.qualification || '-' }}</el-descriptions-item>
       </el-descriptions>

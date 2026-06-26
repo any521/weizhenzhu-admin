@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, useSlots } from 'vue'
 import { useRoute } from 'vue-router'
 import { Setting } from '@element-plus/icons-vue'
 import { getStorage, setStorage } from '@/utils/storage'
@@ -74,6 +74,7 @@ const emit = defineEmits<{
   (e: 'rowClick', row: T): void
 }>()
 
+const slots = useSlots()
 const route = useRoute()
 
 const currentPage = computed({
@@ -162,6 +163,11 @@ const visibleColumns = computed(() => {
 
 // 是否使用列配置模式
 const useColumnsMode = computed(() => !!props.columns && props.columns.length > 0)
+
+// 检查某列是否有自定义插槽
+function hasSlot(prop: string) {
+  return !!(slots as Record<string, unknown>)[`cell-${prop}`]
+}
 
 // 列配置弹窗
 const columnConfigVisible = ref(false)
@@ -259,29 +265,31 @@ onMounted(() => {
       <!-- 批量选择列 -->
       <el-table-column v-if="selectable" type="selection" width="50" fixed="left" />
 
-      <!-- 列配置模式 -->
-      <template v-if="useColumnsMode">
-        <el-table-column
-          v-for="col in visibleColumns"
-          :key="col.prop"
-          :prop="col.prop"
-          :label="col.label"
-          :width="col.width"
-          :min-width="col.minWidth"
-          :sortable="col.sortable ? 'custom' : false"
-          :fixed="col.fixed"
-          :show-overflow-tooltip="col.showOverflowTooltip"
-          :align="col.align"
-          :header-align="col.headerAlign"
-        >
-          <template v-if="$slots[`cell-${col.prop}`]" #default="scope">
-            <slot :name="`cell-${col.prop}`" :row="scope.row" :index="scope.$index" />
-          </template>
-        </el-table-column>
-      </template>
+      <!-- 列配置模式：使用动态组件渲染，避免 v-if 包裹 el-table-column 导致的 DOM 问题 -->
+      <el-table-column
+        v-for="col in visibleColumns"
+        :key="col.prop"
+        :prop="col.prop"
+        :label="col.label"
+        :width="col.width"
+        :min-width="col.minWidth"
+        :sortable="col.sortable ? 'custom' : false"
+        :fixed="col.fixed"
+        :show-overflow-tooltip="col.showOverflowTooltip"
+        :align="col.align"
+        :header-align="col.headerAlign"
+      >
+        <template #default="scope">
+          <slot :name="`cell-${col.prop}`" :row="scope.row" :index="scope.$index">
+            {{ scope.row[col.prop] }}
+          </slot>
+        </template>
+      </el-table-column>
 
-      <!-- 默认插槽（向后兼容） -->
-      <slot v-else />
+      <!-- 默认插槽（向后兼容，非列配置模式时使用） -->
+      <template v-if="!useColumnsMode">
+        <slot />
+      </template>
 
       <!-- 操作列插槽（用于列配置模式下放操作列） -->
       <slot name="append" />

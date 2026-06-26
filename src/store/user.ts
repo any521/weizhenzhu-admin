@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import type { UserType } from '@/utils/constants'
 import { api } from '@/api'
+import { wsService } from '@/utils/websocket'
 
 export interface UserInfo {
   id: number
@@ -89,6 +90,7 @@ export const useUserStore = defineStore('user', () => {
    * 退出登录
    */
   async function logout() {
+    wsService.disconnect()
     try {
       await api.auth.logout()
     } catch {

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { Refresh, Search, RefreshRight } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import type { Order } from '@/api/types'
-import { formatAmount, formatDate } from '@/utils/format'
+import { formatAmount, formatDate, maskPhone } from '@/utils/format'
 import { OrderStatusMap, DEFAULT_PAGE_SIZE } from '@/utils/constants'
+import { wsService } from '@/utils/websocket'
 
 // 加载状态
 const loading = ref(false)
@@ -123,6 +124,14 @@ async function handleReady(row: Order) {
 
 onMounted(() => {
   fetchOrderList()
+  // 监听新订单通知，收到后刷新列表
+  const offNewOrder = wsService.on('NEW_ORDER', () => {
+    fetchOrderList()
+  })
+  // 组件卸载时移除监听
+  onUnmounted(() => {
+    offNewOrder()
+  })
 })
 </script>
 
@@ -166,9 +175,12 @@ onMounted(() => {
         @size-change="handleSizeChange"
       >
         <el-table-column prop="orderNo" label="订单号" min-width="160" show-overflow-tooltip />
-        <el-table-column label="用户" min-width="120">
+        <el-table-column label="用户" min-width="160">
           <template #default="{ row }">
-            <span class="user-name">{{ row.userNickname || row.userName || '-' }}</span>
+            <div class="user-info">
+              <span class="user-name">{{ row.userNickname || row.userName || '-' }}</span>
+              <span v-if="row.userPhone" class="user-phone">{{ maskPhone(row.userPhone) }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="金额" width="120">
@@ -191,7 +203,7 @@ onMounted(() => {
         </el-table-column>
         <el-table-column label="下单时间" width="170">
           <template #default="{ row }">
-            {{ formatDate(row.createTime) }}
+            {{ formatDate(row.createdAt || row.createTime) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -221,6 +233,11 @@ onMounted(() => {
     .user-name {
       color: $text;
       font-weight: 500;
+    }
+    .user-phone {
+      display: block;
+      font-size: $font-size-xs;
+      color: $text-muted;
     }
   }
 

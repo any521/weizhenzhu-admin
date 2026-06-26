@@ -196,7 +196,13 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="name" label="菜品名称" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="categoryName" label="分类" min-width="100" />
+        <el-table-column prop="categoryName" label="店铺分类" min-width="100" />
+        <el-table-column label="平台标签" min-width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.platformCategoryName" type="warning" size="small">{{ row.platformCategoryName }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="价格" width="120">
           <template #default="{ row }">
             <div class="price-info">
@@ -205,7 +211,9 @@ onMounted(() => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="sales" label="销量" width="100" />
+        <el-table-column prop="monthSales" label="销量" width="100">
+          <template #default="{ row }">{{ row.monthSales ?? row.sales ?? 0 }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">

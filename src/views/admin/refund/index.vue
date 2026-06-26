@@ -188,7 +188,7 @@ const exportColumns: ExportColumn[] = [
   { prop: 'orderNo', label: '订单号' },
   { prop: 'userName', label: '用户' },
   { prop: 'merchantName', label: '商家' },
-  { prop: 'amount', label: '退款金额', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '0.00') },
+  { prop: 'amount', label: '退款金额', formatter: (_row, v) => (v != null ? `¥${Number(v).toFixed(2)}` : '¥0.00') },
   { prop: 'reason', label: '退款原因' },
   { prop: 'status', label: '状态', formatter: (_row, v) => RefundStatusMap[v] || '未知' },
   { prop: 'applyTime', label: '申请时间' },

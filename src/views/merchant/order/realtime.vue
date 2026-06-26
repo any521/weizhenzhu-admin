@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Refresh, Bell } from '@element-plus/icons-vue'
 import { api } from '@/api'
-import { playNewOrderSound } from '@/utils/sound'
+import { wsService } from '@/utils/websocket'
 import type { Order } from '@/api/types'
 import { formatAmount, formatDate } from '@/utils/format'
 import { OrderStatusMap } from '@/utils/constants'
@@ -24,7 +24,8 @@ const countdownMap = ref<Record<number, number>>({})
 // 定时器
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 let pollTimer: ReturnType<typeof setInterval> | null = null
-const POLL_INTERVAL = 10000
+// 较慢的轮询间隔（30秒），作为WebSocket的兜底刷新，不触发提示音
+const POLL_INTERVAL = 30000
 
 // 获取实时订单（待接单/待配送）
 async function fetchRealtimeOrders(showTip = false) {
@@ -34,11 +35,12 @@ async function fetchRealtimeOrders(showTip = false) {
     const pendingOrders = res.data.list.filter((item) => item.status === 1 || item.status === 2)
     realtimeOrders.value = pendingOrders
 
+    // 仅在非WS触发的轮询刷新时（即兜底轮询），不弹出声音/消息提示
+    // 声音和弹窗通知统一由wsService内置的handleNewOrder处理，避免重复
     if (showTip && pendingOrders.length > lastOrderCount.value) {
       newOrderTip.value = true
       const diff = pendingOrders.length - lastOrderCount.value
       ElMessage.success(`收到 ${diff} 笔新订单`)
-      playNewOrderSound()
       setTimeout(() => {
         newOrderTip.value = false
       }, 3000)
@@ -108,11 +110,11 @@ function stopCountdown() {
   }
 }
 
-// 启动轮询
+// 启动兜底轮询（低频，仅作数据一致性保障，不触发提示音）
 function startPolling() {
   if (pollTimer) return
   pollTimer = setInterval(() => {
-    fetchRealtimeOrders(true)
+    fetchRealtimeOrders(false)
   }, POLL_INTERVAL)
 }
 
@@ -133,8 +135,10 @@ function toggleAutoRefresh() {
   }
 }
 
+let offWsNewOrder: (() => void) | null = null
+
 onMounted(() => {
-  fetchRealtimeOrders(true)
+  fetchRealtimeOrders()
   startCountdown()
   startPolling()
 
@@ -143,9 +147,18 @@ onMounted(() => {
     Notification.requestPermission()
   }
 
+  // 通过WebSocket监听新订单，实时刷新列表（声音/弹窗由wsService统一处理，此处仅刷新数据）
+  offWsNewOrder = wsService.on('NEW_ORDER', () => {
+    fetchRealtimeOrders(false)
+  })
+
   onUnmounted(() => {
     stopPolling()
     stopCountdown()
+    if (offWsNewOrder) {
+      offWsNewOrder()
+      offWsNewOrder = null
+    }
   })
 })
 </script>
@@ -191,7 +204,7 @@ onMounted(() => {
             <div class="order-card__body">
               <div class="info-row">
                 <span class="info-label">用户：</span>
-                <span class="info-value">{{ order.userName }}</span>
+                <span class="info-value">{{ order.userNickname || order.userName || '-' }}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">商品：</span>
@@ -207,7 +220,7 @@ onMounted(() => {
               </div>
               <div class="info-row">
                 <span class="info-label">下单时间：</span>
-                <span class="info-value">{{ formatDate(order.createTime) }}</span>
+                <span class="info-value">{{ formatDate(order.createdAt || order.createTime) }}</span>
               </div>
               <div v-if="countdownMap[order.id] !== undefined" class="info-row countdown-row">
                 <span class="info-label">剩余：</span>

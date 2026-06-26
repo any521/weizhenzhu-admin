@@ -12,13 +12,16 @@ const router = useRouter()
 const loading = ref(false)
 const submitLoading = ref(false)
 
-// 分类列表
+// 分类列表（商家自定义分类）
 const categoryList = ref<Category[]>([])
+// 平台分类列表（系统管理员分类标签）
+const platformCategoryList = ref<Category[]>([])
 
 // 表单数据
 const form = reactive<Partial<Dish>>({
   name: '',
   categoryId: undefined,
+  platformCategoryId: undefined,
   price: undefined,
   originalPrice: undefined,
   stock: undefined,
@@ -58,6 +61,19 @@ async function handleFileChange(event: Event) {
   const file = target.files?.[0]
   if (!file) return
 
+  // 校验图片类型
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    target.value = ''
+    return
+  }
+  // 校验图片大小：10MB
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 10MB')
+    target.value = ''
+    return
+  }
+
   uploading.value = true
   try {
     const res = await api.file.upload(file)
@@ -72,13 +88,23 @@ async function handleFileChange(event: Event) {
   }
 }
 
-// 获取分类列表
+// 获取商家自定义分类列表
 async function fetchCategories() {
   try {
     const res = await api.category.getList()
     categoryList.value = res.data
   } catch {
     categoryList.value = []
+  }
+}
+
+// 获取平台分类列表（系统分类标签）
+async function fetchPlatformCategories() {
+  try {
+    const res = await api.category.getPlatformList()
+    platformCategoryList.value = res.data
+  } catch {
+    platformCategoryList.value = []
   }
 }
 
@@ -109,6 +135,7 @@ async function handleSave() {
     const payload: Partial<Dish> = {
       name: form.name,
       categoryId: form.categoryId,
+      platformCategoryId: form.platformCategoryId,
       price: form.price,
       originalPrice: form.originalPrice,
       stock: form.stock,
@@ -139,6 +166,7 @@ onMounted(() => {
     editId.value = String(id)
   }
   fetchCategories()
+  fetchPlatformCategories()
   fetchDishDetail()
 })
 </script>
@@ -163,7 +191,7 @@ onMounted(() => {
         </el-form-item>
 
         <el-form-item label="菜品分类" prop="categoryId">
-          <el-select v-model="form.categoryId" placeholder="请选择分类" style="width: 100%">
+          <el-select v-model="form.categoryId" placeholder="请选择店铺内分类" style="width: 100%">
             <el-option
               v-for="item in categoryList"
               :key="item.id"
@@ -171,6 +199,18 @@ onMounted(() => {
               :value="item.id"
             />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="平台分类标签">
+          <el-select v-model="form.platformCategoryId" placeholder="选择平台分类标签（用于平台搜索归类，可选）" clearable style="width: 100%">
+            <el-option
+              v-for="item in platformCategoryList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <div class="form-tip">选择平台分类后，该菜品将在客户端对应分类下展示，便于用户搜索发现</div>
         </el-form-item>
 
         <el-row :gutter="20">
@@ -292,6 +332,13 @@ onMounted(() => {
     margin-top: $spacing-sm;
     font-size: $font-size-sm;
     color: $text-muted;
+  }
+
+  .form-tip {
+    font-size: $font-size-sm;
+    color: $text-muted;
+    margin-top: 4px;
+    line-height: 1.4;
   }
 
   .form-actions {

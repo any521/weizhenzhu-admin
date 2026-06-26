@@ -20,6 +20,7 @@ import { OrderStatusMap } from '@/utils/constants'
 const loading = ref(false)
 const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+const THEME_COLOR = '#FF6B35'
 
 // 统计数据
 const stats = ref({
@@ -103,8 +104,8 @@ function updateChart() {
         barWidth: '30%',
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#FF6B6B' },
-            { offset: 1, color: '#FF4B33' },
+            { offset: 0, color: '#FF9A6C' },
+            { offset: 1, color: THEME_COLOR },
           ]),
           borderRadius: [4, 4, 0, 0],
         },
@@ -117,12 +118,12 @@ function updateChart() {
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
-        itemStyle: { color: '#FFC300' },
+        itemStyle: { color: '#FFB347' },
         lineStyle: { width: 3 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(255, 195, 0, 0.2)' },
-            { offset: 1, color: 'rgba(255, 195, 0, 0)' },
+            { offset: 0, color: 'rgba(255, 179, 71, 0.2)' },
+            { offset: 1, color: 'rgba(255, 179, 71, 0)' },
           ]),
         },
         data: chartData.value.series[1]?.data || [],
@@ -192,10 +193,10 @@ onMounted(() => {
     <!-- 顶部数据卡片 -->
     <div class="stats-row">
       <app-card v-for="(item, index) in [
-        { label: '今日订单数', value: formatNumber(stats.todayOrderCount), icon: 'Document', color: '#FF4B33' },
-        { label: '今日营业额', value: formatAmount(stats.todayIncome), icon: 'Money', color: '#FFC300' },
-        { label: '待处理订单', value: formatNumber(stats.pendingOrderCount), icon: 'Bell', color: '#00C853' },
-        { label: '待回复评价', value: formatNumber(stats.pendingReviewCount), icon: 'ChatDotRound', color: '#2196F3' },
+        { label: '今日订单数', value: formatNumber(stats.todayOrderCount), icon: 'Document', color: THEME_COLOR },
+        { label: '今日营业额', value: formatAmount(stats.todayIncome), icon: 'Money', color: '#FFB347' },
+        { label: '待处理订单', value: formatNumber(stats.pendingOrderCount), icon: 'Bell', color: '#EF476F' },
+        { label: '待回复评价', value: formatNumber(stats.pendingReviewCount), icon: 'ChatDotRound', color: '#06D6A0' },
       ]" :key="index" class="stats-card" :body-style="{ padding: '20px' }">
         <div class="stats-card__content">
           <div class="stats-card__info">

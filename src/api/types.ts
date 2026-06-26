@@ -51,9 +51,14 @@ export interface Merchant {
   auditStatus: number
   operateStatus: number
   rating: number
-  monthlySales: number
+  monthSales?: number
+  monthlySales?: number
   createTime: string
   qualification?: string
+  /** 是否支持外卖配送：1支持 0不支持 */
+  supportDelivery?: number
+  /** 是否支持到店自取：1支持 0不支持 */
+  supportPickup?: number
 }
 
 // 骑手
@@ -87,6 +92,7 @@ export interface Order {
   userId?: number
   userName?: string
   userNickname?: string
+  userPhone?: string
   merchantId?: number
   merchantName?: string
   riderId?: number
@@ -105,6 +111,7 @@ export interface Order {
   couponAmount?: number
   remark?: string
   payType?: number
+  createdAt?: string
   createTime: string
   payTime?: string
   receiveTime?: string
@@ -139,6 +146,8 @@ export interface Dish {
   images?: string[]
   categoryId: number
   categoryName?: string
+  platformCategoryId?: number
+  platformCategoryName?: string
   description?: string
   stock?: number
   monthSales?: number
@@ -457,6 +466,7 @@ export interface DishUpdateDTO {
   image?: string
   images?: string[]
   categoryId?: number
+  platformCategoryId?: number
   description?: string
   stock?: number
   spicy?: number
@@ -562,6 +572,13 @@ export interface MerchantDetail extends Merchant {
   latitude?: number
   description?: string
   announcement?: string
+  openTime?: string
+  deliveryRadius?: number
+  minOrderAmount?: number
+  deliveryFee?: number
+  packingFee?: number
+  isOpen?: number
+  notice?: string
 }
 
 /** 骑手扩展（含更多字段） */

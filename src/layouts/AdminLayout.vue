@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/store'
 import type { UserType } from '@/utils/constants'
+import { wsService } from '@/utils/websocket'
 
 const route = useRoute()
 const router = useRouter()
@@ -88,10 +89,18 @@ const breadcrumbs = computed(() => {
 // 默认激活菜单
 const activeMenu = computed(() => route.path)
 
-// 退出登录
-function handleLogout() {
-  userStore.logout()
-  router.push('/login')
+// 下拉菜单命令处理
+function handleCommand(command: string) {
+  if (command === 'logout') {
+    userStore.logout()
+    router.push('/login')
+  } else if (command === 'profile') {
+    if (userType.value === 'admin') {
+      router.push('/admin/profile')
+    } else {
+      router.push('/merchant/profile')
+    }
+  }
 }
 
 // 切换侧边栏
@@ -105,9 +114,6 @@ function getIcon(name: string) {
   return name
 }
 
-// 页面标题
-const pageTitle = computed(() => (route.meta?.title as string) || '')
-
 watch(
   () => route.path,
   () => {
@@ -115,6 +121,26 @@ watch(
   },
   { immediate: true }
 )
+
+// 商家端进入时连接WebSocket，退出时断开
+onMounted(() => {
+  if (userType.value === 'merchant') {
+    wsService.connect()
+  }
+})
+
+onUnmounted(() => {
+  wsService.disconnect()
+})
+
+// 监听用户类型变化，商家端才连接
+watch(userType, (newType, oldType) => {
+  if (newType === 'merchant' && oldType !== 'merchant') {
+    wsService.connect()
+  } else if (newType !== 'merchant') {
+    wsService.disconnect()
+  }
+})
 </script>
 
 <template>
@@ -190,7 +216,7 @@ watch(
 
         <div class="header-right">
           <span class="app-name">{{ appStore.appName }}</span>
-          <el-dropdown trigger="click" @command="handleLogout">
+          <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-info">
               <el-avatar :size="32" :src="userStore.userInfo?.avatar" class="user-avatar">
                 {{ userStore.userInfo?.nickname?.charAt(0) || 'U' }}
@@ -207,11 +233,6 @@ watch(
           </el-dropdown>
         </div>
       </el-header>
-
-      <!-- 标签页/面包屑下方预留区域 -->
-      <div class="admin-layout__tabs">
-        <div class="page-title">{{ pageTitle }}</div>
-      </div>
 
       <!-- 内容区 -->
       <el-main class="admin-layout__content">
@@ -250,14 +271,6 @@ watch(
     padding: 0 $spacing-lg;
     box-shadow: $shadow;
     z-index: 5;
-  }
-
-  &__tabs {
-    background-color: #fff;
-    padding: $spacing-sm $spacing-lg;
-    border-bottom: 1px solid $border-light;
-    display: flex;
-    align-items: center;
   }
 
   &__content {
@@ -384,23 +397,4 @@ watch(
   }
 }
 
-.page-title {
-  font-size: $font-size-lg;
-  font-weight: 600;
-  color: $text;
-  position: relative;
-  padding-left: $spacing-sm;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 16px;
-    background-color: $primary;
-    border-radius: $radius-sm;
-  }
-}
 </style>

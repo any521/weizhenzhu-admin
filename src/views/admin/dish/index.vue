@@ -5,24 +5,25 @@ import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable, { type TableColumn } from '@/components/AppTable.vue'
-import { formatDate, formatAmount, truncateText } from '@/utils/format'
+import { formatDate, formatAmount, formatNumber, truncateText } from '@/utils/format'
 import { CommonStatusMap } from '@/utils/constants'
 import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { downloadBlob } from '@/utils/download'
 import { useSavedQueries, type SavedQuery } from '@/composables/useSavedQueries'
 import type { Dish, Category, DishUpdateDTO } from '@/api/types'
 import type { FormInstance, FormRules } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 // 搜索表单
 interface SearchForm {
   keyword: string
-  categoryId: number | undefined
+  platformCategoryId: number | undefined
   status: number | undefined
 }
 
 const searchForm = reactive<SearchForm>({
   keyword: '',
-  categoryId: undefined,
+  platformCategoryId: undefined,
   status: undefined,
 })
 
@@ -53,6 +54,7 @@ const formData = reactive<Partial<Dish>>({
   id: undefined,
   name: '',
   categoryId: undefined,
+  platformCategoryId: undefined,
   price: undefined,
   originalPrice: undefined,
   stock: undefined,
@@ -63,13 +65,14 @@ const formData = reactive<Partial<Dish>>({
 
 const rules = computed<FormRules>(() => ({
   name: [{ required: true, message: '请输入菜品名称', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 }))
 
 // 分类列表
 const categoryList = ref<Category[]>([])
+// 平台分类列表
+const platformCategoryList = ref<Category[]>([])
 
 // 图片上传
 const uploading = ref(false)
@@ -80,9 +83,10 @@ const columns: TableColumn[] = [
   { prop: 'id', label: 'ID', width: 80, sortable: true },
   { prop: 'image', label: '图片', width: 90 },
   { prop: 'name', label: '菜品名称', minWidth: 140, sortable: true },
-  { prop: 'categoryName', label: '分类', minWidth: 100 },
+  { prop: 'categoryName', label: '商家分类', minWidth: 100 },
+  { prop: 'platformCategoryName', label: '平台分类', minWidth: 100 },
   { prop: 'price', label: '价格', width: 130, sortable: true },
-  { prop: 'sales', label: '销量', width: 90, sortable: true },
+  { prop: 'monthSales', label: '销量', width: 90, sortable: true },
   { prop: 'status', label: '状态', width: 90 },
   { prop: 'createTime', label: '创建时间', minWidth: 170, sortable: true },
 ]
@@ -100,20 +104,20 @@ function buildQueryParams() {
     current: page.value,
     size: pageSize.value,
     keyword: searchForm.keyword || undefined,
-    categoryId: searchForm.categoryId,
+    platformCategoryId: searchForm.platformCategoryId,
     status: searchForm.status,
     sortField: sortField.value || undefined,
     sortOrder: sortOrder.value,
   }
 }
 
-// 加载分类列表
+// 加载平台分类列表（管理员端的分类就是平台分类）
 async function loadCategories() {
   try {
     const res = await api.category.getList()
-    categoryList.value = res.data
+    platformCategoryList.value = res.data
   } catch {
-    categoryList.value = []
+    platformCategoryList.value = []
   }
 }
 
@@ -138,7 +142,7 @@ function handleSearch() {
 // 重置
 function handleReset() {
   searchForm.keyword = ''
-  searchForm.categoryId = undefined
+  searchForm.platformCategoryId = undefined
   searchForm.status = undefined
   sortField.value = ''
   handleSearch()
@@ -166,21 +170,9 @@ function handleView(row: Dish) {
   detailVisible.value = true
 }
 
-// 打开新增
+// 打开新增（管理员不允许新增菜品）
 function handleAdd() {
-  isEdit.value = false
-  Object.assign(formData, {
-    id: undefined,
-    name: '',
-    categoryId: undefined,
-    price: undefined,
-    originalPrice: undefined,
-    stock: undefined,
-    status: 1,
-    description: '',
-    image: '',
-  })
-  formVisible.value = true
+  ElMessage.warning('管理员不可新增菜品，请由商家账号创建')
 }
 
 // 打开编辑
@@ -190,6 +182,7 @@ async function handleEdit(row: Dish) {
     id: row.id,
     name: row.name,
     categoryId: row.categoryId,
+    platformCategoryId: row.platformCategoryId,
     price: row.price,
     originalPrice: row.originalPrice,
     stock: row.stock,
@@ -210,6 +203,19 @@ async function handleFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
+
+  // 校验图片类型
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    target.value = ''
+    return
+  }
+  // 校验图片大小：10MB
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 10MB')
+    target.value = ''
+    return
+  }
 
   uploading.value = true
   try {
@@ -233,7 +239,7 @@ async function handleSave() {
   try {
     const payload: DishUpdateDTO = {
       name: formData.name,
-      categoryId: formData.categoryId,
+      platformCategoryId: formData.platformCategoryId,
       price: formData.price,
       originalPrice: formData.originalPrice,
       stock: formData.stock,
@@ -244,9 +250,6 @@ async function handleSave() {
     if (isEdit.value && formData.id) {
       await api.dish.update(formData.id, payload)
       ElMessage.success('更新成功')
-    } else {
-      await api.dish.add(payload)
-      ElMessage.success('创建成功')
     }
     formVisible.value = false
     loadList()
@@ -310,9 +313,10 @@ const exportColumns: ExportColumn[] = [
   { prop: 'id', label: 'ID' },
   { prop: 'name', label: '菜品名称' },
   { prop: 'categoryName', label: '分类' },
-  { prop: 'price', label: '价格', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '0.00') },
-  { prop: 'originalPrice', label: '原价', formatter: (_row, v) => (v ? (v / 100).toFixed(2) : '-') },
-  { prop: 'sales', label: '销量' },
+  { prop: 'price', label: '价格', formatter: (_row, v) => (v != null ? `¥${Number(v).toFixed(2)}` : '¥0.00') },
+  { prop: 'originalPrice', label: '原价', formatter: (_row, v) => (v != null ? `¥${Number(v).toFixed(2)}` : '-') },
+  { prop: 'monthSales', label: '销量' },
+  { prop: 'createTime', label: '创建时间', formatter: (_row, v) => formatDate(v) },
   { prop: 'status', label: '状态', formatter: (_row, v) => (v === 1 ? '上架' : '下架') },
   { prop: 'description', label: '描述' },
   { prop: 'createTime', label: '创建时间' },
@@ -346,7 +350,7 @@ async function handleExport(format: 'xlsx' | 'csv') {
 function openSaveQuery() {
   if (
     !searchForm.keyword &&
-    searchForm.categoryId === undefined &&
+    searchForm.platformCategoryId === undefined &&
     searchForm.status === undefined
   ) {
     ElMessage.warning('请先设置查询条件')
@@ -388,8 +392,7 @@ onMounted(() => {
 
 <template>
   <div class="admin-dish">
-    <AppHeader title="菜品管理" subtitle="管理平台所有菜品">
-      <el-button type="primary" :icon="Plus" @click="handleAdd">新增菜品</el-button>
+    <AppHeader title="菜品管理" subtitle="管理平台所有菜品（菜品由商家创建，管理员仅可查看编辑）">
       <el-dropdown @command="handleExport">
         <el-button :icon="Download" :loading="exporting">导出</el-button>
         <template #dropdown>
@@ -407,10 +410,10 @@ onMounted(() => {
         <el-form-item label="菜品名称">
           <el-input v-model="searchForm.keyword" placeholder="请输入菜品名称" clearable />
         </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="全部分类" clearable style="width: 160px">
+        <el-form-item label="平台分类">
+          <el-select v-model="searchForm.platformCategoryId" placeholder="全部分类" clearable style="width: 160px">
             <el-option
-              v-for="item in categoryList"
+              v-for="item in platformCategoryList"
               :key="item.id"
               :label="item.name"
               :value="item.id"
@@ -488,11 +491,25 @@ onMounted(() => {
           </div>
         </template>
 
+        <template #cell-categoryName="{ row }">
+          <span v-if="row.categoryName">{{ row.categoryName }}</span>
+          <span v-else class="text-muted">-</span>
+        </template>
+
+        <template #cell-platformCategoryName="{ row }">
+          <el-tag v-if="row.platformCategoryName" type="warning" size="small">{{ row.platformCategoryName }}</el-tag>
+          <span v-else class="text-muted">-</span>
+        </template>
+
         <template #cell-price="{ row }">
           <div class="price-info">
             <span class="current-price">{{ formatAmount(row.price) }}</span>
             <span v-if="row.originalPrice" class="original-price">{{ formatAmount(row.originalPrice) }}</span>
           </div>
+        </template>
+
+        <template #cell-monthSales="{ row }">
+          {{ formatNumber(row.monthSales ?? row.sales ?? row.totalSales ?? 0) }}
         </template>
 
         <template #cell-status="{ row }">
@@ -534,7 +551,8 @@ onMounted(() => {
           <span v-else class="text-muted">无</span>
         </el-descriptions-item>
         <el-descriptions-item label="菜品名称">{{ currentRow.name }}</el-descriptions-item>
-        <el-descriptions-item label="分类">{{ currentRow.categoryName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="商家分类">{{ currentRow.categoryName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="平台分类">{{ currentRow.platformCategoryName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="现价">{{ formatAmount(currentRow.price) }}</el-descriptions-item>
         <el-descriptions-item label="原价">{{ currentRow.originalPrice ? formatAmount(currentRow.originalPrice) : '-' }}</el-descriptions-item>
         <el-descriptions-item label="销量">{{ currentRow.sales ?? currentRow.monthSales ?? currentRow.totalSales ?? 0 }}</el-descriptions-item>
@@ -549,16 +567,19 @@ onMounted(() => {
       </el-descriptions>
     </el-dialog>
 
-    <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="formVisible" :title="isEdit ? '编辑菜品' : '新增菜品'" width="640px">
+    <!-- 编辑弹窗（管理员仅可编辑，不可新增） -->
+    <el-dialog v-model="formVisible" title="编辑菜品" width="640px">
       <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px">
         <el-form-item label="菜品名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入菜品名称" maxlength="50" show-word-limit />
         </el-form-item>
-        <el-form-item label="菜品分类" prop="categoryId">
-          <el-select v-model="formData.categoryId" placeholder="请选择分类" style="width: 100%">
+        <el-form-item label="商家分类">
+          <el-input :value="tableData.find(r => r.id === formData.id)?.categoryName || '-'" disabled />
+        </el-form-item>
+        <el-form-item label="平台分类标签">
+          <el-select v-model="formData.platformCategoryId" placeholder="请选择平台分类标签" clearable style="width: 100%">
             <el-option
-              v-for="item in categoryList"
+              v-for="item in platformCategoryList"
               :key="item.id"
               :label="item.name"
               :value="item.id"

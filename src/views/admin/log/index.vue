@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import { Search, RefreshRight, Download, Star } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -83,8 +84,13 @@ async function loadList() {
   loading.value = true
   try {
     const res = await api.log.getList(buildQueryParams())
-    tableData.value = res.data.list
-    total.value = res.data.total
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } catch (e: any) {
+    console.error('加载日志失败', e)
+    ElMessage.error(e?.message || '加载日志失败')
+    tableData.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -131,7 +137,7 @@ const exportColumns: ExportColumn[] = [
   { prop: 'module', label: '模块' },
   { prop: 'action', label: '操作类型' },
   { prop: 'ip', label: 'IP' },
-  { prop: 'createTime', label: '操作时间' },
+  { prop: 'createTime', label: '操作时间', formatter: (_row, v) => formatDate(v) },
   { prop: 'result', label: '结果', formatter: (_row, v) => (v === 1 ? '成功' : '失败') },
   { prop: 'detail', label: '详情' },
 ]
@@ -282,6 +288,14 @@ onMounted(loadList)
         @size-change="loadList"
         @sort-change="handleSortChange"
       >
+        <template #cell-operator="{ row }">
+          {{ row.operator || '-' }}
+        </template>
+
+        <template #cell-ip="{ row }">
+          {{ row.ip || '-' }}
+        </template>
+
         <template #cell-createTime="{ row }">
           {{ formatDate(row.createTime) }}
         </template>
@@ -293,7 +307,7 @@ onMounted(loadList)
         </template>
 
         <template #cell-detail="{ row }">
-          {{ row.detail ? truncateText(row.detail, 30) : '-' }}
+          {{ row.detail || row.params || '-' }}
         </template>
 
         <template #append>
