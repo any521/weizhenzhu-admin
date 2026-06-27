@@ -5,7 +5,7 @@ import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable, { type TableColumn } from '@/components/AppTable.vue'
-import { formatDate, truncateText } from '@/utils/format'
+import { formatDate, truncateText, resolveImageUrl } from '@/utils/format'
 import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { downloadBlob } from '@/utils/download'
 import { useSavedQueries, type SavedQuery } from '@/composables/useSavedQueries'
@@ -64,13 +64,14 @@ const replyRules = {
 // 列定义
 const columns: TableColumn[] = [
   { prop: 'id', label: 'ID', width: 80, sortable: true },
-  { prop: 'userName', label: '用户', minWidth: 120 },
+  { prop: 'userNickname', label: '用户', minWidth: 120 },
   { prop: 'merchantName', label: '商家', minWidth: 140 },
   { prop: 'rating', label: '评分', width: 160, sortable: true },
   { prop: 'content', label: '评价内容', minWidth: 220, showOverflowTooltip: true },
+  { prop: 'images', label: '评价图片', width: 120, slot: 'images' },
   { prop: 'reply', label: '商家回复', minWidth: 180, showOverflowTooltip: true },
   { prop: 'status', label: '状态', width: 100 },
-  { prop: 'createTime', label: '评价时间', minWidth: 170, sortable: true },
+  { prop: 'createdAt', label: '评价时间', minWidth: 170, sortable: true },
 ]
 
 // 查询条件保存
@@ -221,13 +222,13 @@ async function handleBatchDelete() {
 // 导出
 const exportColumns: ExportColumn[] = [
   { prop: 'id', label: 'ID' },
-  { prop: 'userName', label: '用户' },
+  { prop: 'userNickname', label: '用户' },
   { prop: 'merchantName', label: '商家' },
   { prop: 'rating', label: '评分' },
   { prop: 'content', label: '评价内容' },
   { prop: 'reply', label: '商家回复' },
   { prop: 'status', label: '状态', formatter: (_row, v) => (v === 1 ? '显示' : '隐藏') },
-  { prop: 'createTime', label: '评价时间' },
+  { prop: 'createdAt', label: '评价时间' },
 ]
 
 async function handleExport(format: 'xlsx' | 'csv') {
@@ -411,8 +412,23 @@ onMounted(loadList)
           </el-tag>
         </template>
 
-        <template #cell-createTime="{ row }">
-          {{ formatDate(row.createTime) }}
+        <template #cell-images="{ row }">
+          <div v-if="row.images && row.images.length" class="review-images-cell">
+            <el-image
+              :src="resolveImageUrl(row.images[0])"
+              fit="cover"
+              class="review-thumb"
+              :preview-src-list="row.images.map((i: string) => resolveImageUrl(i))"
+              preview-teleported
+              :z-index="3000"
+            />
+            <span v-if="row.images.length > 1" class="review-images-count">+{{ row.images.length - 1 }}</span>
+          </div>
+          <span v-else class="text-muted">-</span>
+        </template>
+
+        <template #cell-createdAt="{ row }">
+          {{ formatDate(row.createdAt) }}
         </template>
 
         <template #append>
@@ -449,8 +465,8 @@ onMounted(loadList)
             <el-image
               v-for="(img, idx) in currentRow.images"
               :key="idx"
-              :src="img"
-              :preview-src-list="currentRow.images"
+              :src="resolveImageUrl(img)"
+              :preview-src-list="currentRow.images.map((i: string) => resolveImageUrl(i))"
               fit="cover"
               style="width: 80px; height: 80px; border-radius: 4px; margin-right: 8px"
             />
@@ -463,7 +479,7 @@ onMounted(loadList)
             {{ currentRow.status === 1 ? '显示' : '隐藏' }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="评价时间">{{ formatDate(currentRow.createTime) }}</el-descriptions-item>
+        <el-descriptions-item label="评价时间">{{ formatDate(currentRow.createdAt) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
 
@@ -537,6 +553,34 @@ onMounted(loadList)
   .image-list {
     display: flex;
     flex-wrap: wrap;
+  }
+
+  .review-images-cell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+
+    .review-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid #ebeef5;
+    }
+
+    .review-images-count {
+      position: absolute;
+      right: -4px;
+      top: -4px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      font-size: 10px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 8px;
+      min-width: 16px;
+      text-align: center;
+    }
   }
 }
 </style>

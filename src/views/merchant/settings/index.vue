@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Camera } from '@element-plus/icons-vue'
+import { Camera, MapLocation, InfoFilled } from '@element-plus/icons-vue'
+import MapPicker from '@/components/MapPicker.vue'
+import { formatDistance } from '@/utils/amap'
 import { api } from '@/api'
 import type { Merchant } from '@/api/types'
+
+// 地图选点对话框
+const mapPickerVisible = ref(false)
 
 // 加载状态
 const loading = ref(false)
@@ -14,7 +19,10 @@ const uploadLoading = ref(false)
 const form = reactive({
   name: '',
   logo: '',
+  contactPerson: '',
   address: '',
+  longitude: undefined as number | undefined,
+  latitude: undefined as number | undefined,
   phone: '',
   openTime: '',
   description: '',
@@ -47,8 +55,16 @@ async function fetchSettings() {
     const data = res.data
     form.name = data.name || ''
     form.logo = data.logo || ''
-    form.address = [data.province, data.city, data.district, data.address].filter(Boolean).join(' ') || data.address || ''
-    form.phone = data.contactPhone || data.phone || ''
+    form.contactPerson = data.contactPerson || ''
+    // 地址拼接：省市区 + 详细地址
+    const regionParts = [data.province, data.city, data.district].filter(Boolean).join(' ')
+    form.address = data.address || ''
+    if (regionParts && !form.address.startsWith(regionParts)) {
+      form.address = regionParts + (form.address ? ' ' + form.address : '')
+    }
+    form.longitude = data.longitude != null ? Number(data.longitude) : undefined
+    form.latitude = data.latitude != null ? Number(data.latitude) : undefined
+    form.phone = data.phone || ''
     form.openTime = data.openTime || '09:00 - 22:00'
     form.description = data.description || ''
     form.deliveryRadius = data.deliveryRadius || 3000
@@ -95,6 +111,23 @@ async function handleLogoUpload(file: File) {
   return false
 }
 
+// 打开地图选点
+function openMapPicker() {
+  mapPickerVisible.value = true
+}
+
+// 确认地图选点
+function onMapSelect(poi: { name: string; address: string; longitude: number; latitude: number }) {
+  form.longitude = Number(poi.longitude.toFixed(6))
+  form.latitude = Number(poi.latitude.toFixed(6))
+  // 如果地址为空或与原地址不同，自动填充
+  if (!form.address || form.address.length < 5) {
+    form.address = poi.address || poi.name
+  }
+  mapPickerVisible.value = false
+  ElMessage.success('已选择位置：' + poi.name)
+}
+
 // 保存店铺设置
 async function handleSave() {
   const valid = await formRef.value?.validate().catch(() => false)
@@ -105,7 +138,10 @@ async function handleSave() {
     const payload: Partial<Merchant> = {
       name: form.name,
       logo: form.logo,
+      contactPerson: form.contactPerson,
       address: form.address,
+      longitude: form.longitude,
+      latitude: form.latitude,
       phone: form.phone,
       openTime: form.openTime,
       description: form.description,
@@ -120,6 +156,8 @@ async function handleSave() {
     }
     await api.merchantSettings.save(payload)
     ElMessage.success('保存成功')
+    // 重新加载设置以确认数据持久化
+    await fetchSettings()
   } finally {
     submitLoading.value = false
   }
@@ -182,18 +220,47 @@ onMounted(() => {
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="联系人">
+              <el-input v-model="form.contactPerson" placeholder="请输入联系人姓名" maxlength="20" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="联系电话" prop="phone">
               <el-input v-model="form.phone" placeholder="请输入联系电话" maxlength="20" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="营业时间" prop="openTime">
+              <el-input v-model="form.openTime" placeholder="例如：09:00 - 22:00" maxlength="50" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-form-item label="店铺地址" prop="address">
-          <el-input v-model="form.address" placeholder="请输入店铺地址" maxlength="100" show-word-limit />
+          <el-input v-model="form.address" placeholder="请输入店铺详细地址" maxlength="100" show-word-limit />
         </el-form-item>
 
-        <el-form-item label="营业时间" prop="openTime">
-          <el-input v-model="form.openTime" placeholder="例如：09:00 - 22:00" maxlength="50" />
+        <el-form-item label="店铺定位">
+          <div class="location-section">
+            <div class="location-coords">
+              <el-input-number v-model="form.longitude" :precision="6" :step="0.000001" placeholder="经度" style="width: 180px" :controls="false">
+                <template #prefix>经度</template>
+              </el-input-number>
+              <el-input-number v-model="form.latitude" :precision="6" :step="0.000001" placeholder="纬度" style="width: 180px" :controls="false">
+                <template #prefix>纬度</template>
+              </el-input-number>
+            </div>
+            <el-button type="primary" plain :icon="MapLocation" @click="openMapPicker">
+              地图选点
+            </el-button>
+          </div>
+          <div class="location-tip">
+            <el-icon color="#909399"><InfoFilled /></el-icon>
+            <span>点击"地图选点"在地图上选择店铺位置，用于骑手导航和配送费计算</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="是否营业">
@@ -280,6 +347,21 @@ onMounted(() => {
     <div class="form-footer">
       <el-button type="primary" size="large" :loading="submitLoading" @click="handleSave">保存设置</el-button>
     </div>
+
+    <!-- 地图选点对话框 -->
+    <el-dialog
+      v-model="mapPickerVisible"
+      title="地图选点"
+      width="700px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <MapPicker
+        :initial-longitude="form.longitude"
+        :initial-latitude="form.latitude"
+        @select="onMapSelect"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -417,5 +499,25 @@ export default {
   .el-button {
     min-width: 200px;
   }
+}
+.location-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.location-coords {
+  display: flex;
+  gap: 8px;
+}
+
+.location-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

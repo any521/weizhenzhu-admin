@@ -6,6 +6,7 @@ import 'nprogress/nprogress.css'
 
 import App from './App.vue'
 import router from './router'
+import { setRouter } from './utils/request'
 
 // 全局样式
 import './styles/index.scss'
@@ -19,6 +20,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 // NProgress 配置
 NProgress.configure({ showSpinner: false })
+
+// 将 router 注入 request 模块，避免循环依赖
+setRouter(router)
 
 app.use(createPinia())
 app.use(router)

@@ -6,7 +6,7 @@ import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppTable, { type TableColumn } from '@/components/AppTable.vue'
 import { formatAmount, formatDate, mapStatus, maskPhone } from '@/utils/format'
-import { OrderStatusMap, OrderStatus } from '@/utils/constants'
+import { OrderStatusMap, OrderStatus, OrderStatusTagType } from '@/utils/constants'
 import { exportToExcel, exportToCsv, type ExportColumn } from '@/utils/export'
 import { downloadBlob } from '@/utils/download'
 import { useSavedQueries, type SavedQuery } from '@/composables/useSavedQueries'
@@ -222,21 +222,17 @@ function handleDeleteQuery(item: SavedQuery) {
   ElMessage.success('已删除')
 }
 
-// 状态标签类型
+// 状态标签类型（使用统一映射）
 function getStatusType(status: number) {
-  if (status === OrderStatus.COMPLETED) return 'success'
-  if (status === OrderStatus.CANCELLED || status === OrderStatus.REFUNDED) return 'info'
-  if (status === OrderStatus.PENDING_PAY || status === OrderStatus.PENDING_ACCEPT) return 'warning'
-  if (status === OrderStatus.REFUNDING) return 'danger'
-  return 'primary'
+  return OrderStatusTagType[status] || 'primary'
 }
 
-// 支付方式映射：1微信 2支付宝 3余额 4货到付款
+// 支付方式映射（与后端 com.weizhenzu.domain.enums.PayType 保持一致）：
+// 1支付宝 2微信支付 3余额支付
 const PayTypeMap: Record<number, string> = {
-  1: '微信支付',
-  2: '支付宝',
+  1: '支付宝',
+  2: '微信支付',
   3: '余额支付',
-  4: '货到付款',
 }
 
 function getPayTypeText(payType?: number) {
@@ -245,10 +241,10 @@ function getPayTypeText(payType?: number) {
 }
 
 function getPayTypeTagType(payType?: number) {
-  if (payType === 1) return 'success'
-  if (payType === 2) return 'primary'
+  // 1支付宝用蓝色(primary)，2微信用绿色(success)，3余额用橙色(warning)
+  if (payType === 1) return 'primary'
+  if (payType === 2) return 'success'
   if (payType === 3) return 'warning'
-  if (payType === 4) return 'info'
   return ''
 }
 
@@ -288,10 +284,9 @@ onMounted(loadList)
         </el-form-item>
         <el-form-item label="支付方式">
           <el-select v-model="searchForm.payType" placeholder="全部支付方式" clearable style="width: 140px">
-            <el-option label="微信支付" :value="1" />
-            <el-option label="支付宝" :value="2" />
+            <el-option label="支付宝" :value="1" />
+            <el-option label="微信支付" :value="2" />
             <el-option label="余额支付" :value="3" />
-            <el-option label="货到付款" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="支付状态">

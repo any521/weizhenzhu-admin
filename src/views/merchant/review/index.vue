@@ -148,10 +148,21 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评价内容" min-width="200" show-overflow-tooltip />
+        <el-table-column label="评价菜品" min-width="150">
+          <template #default="{ row }">
+            <span v-if="row.dishNames && row.dishNames.length">{{ row.dishNames.join('、') }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="merchantName" label="关联商家" min-width="130" />
+        <el-table-column prop="deliveryManName" label="配送骑手" min-width="100">
+          <template #default="{ row }">
+            <span>{{ row.deliveryManName || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="评价时间" width="160">
           <template #default="{ row }">
-            {{ formatDate(row.createTime, 'YYYY-MM-DD HH:mm') }}
+            {{ formatDate(row.createdAt, 'YYYY-MM-DD HH:mm') }}
           </template>
         </el-table-column>
         <el-table-column label="回复状态" width="100">

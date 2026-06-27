@@ -14,7 +14,7 @@ import {
 import { api } from '@/api'
 import type { Order, Review, ChartData, MerchantDashboardStats } from '@/api/types'
 import { formatAmount, formatDate, formatNumber } from '@/utils/format'
-import { OrderStatusMap } from '@/utils/constants'
+import { OrderStatusMap, OrderStatusTagType } from '@/utils/constants'
 
 // 加载状态
 const loading = ref(false)
@@ -230,7 +230,7 @@ onMounted(() => {
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 4 ? 'success' : row.status === 1 ? 'warning' : 'info'" size="small">
+              <el-tag :type="OrderStatusTagType[row.status] || 'info'" size="small">
                 {{ OrderStatusMap[row.status] || '未知' }}
               </el-tag>
             </template>

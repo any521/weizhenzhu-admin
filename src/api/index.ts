@@ -22,6 +22,7 @@ import type {
   TodoItem,
   FinanceReport,
   SystemSettings,
+  CustomConfigItem,
   MerchantDashboardStats,
   Promotion,
   UploadResult,
@@ -1261,6 +1262,38 @@ export const api = {
         method: 'put',
         url: '/api/admin/system/settings',
         data,
+      })
+    },
+
+    // 自定义配置项 CRUD
+    async listCustomConfig(params: { keyword?: string; category?: string } = {}): Promise<ApiResult<CustomConfigItem[]>> {
+      return request<ApiResult<CustomConfigItem[]>>({
+        method: 'get',
+        url: '/api/admin/system/custom-config',
+        params,
+      })
+    },
+
+    async addCustomConfig(data: CustomConfigItem): Promise<ApiResult<CustomConfigItem>> {
+      return request<ApiResult<CustomConfigItem>>({
+        method: 'post',
+        url: '/api/admin/system/custom-config',
+        data,
+      })
+    },
+
+    async updateCustomConfig(key: string, data: CustomConfigItem): Promise<ApiResult<CustomConfigItem>> {
+      return request<ApiResult<CustomConfigItem>>({
+        method: 'put',
+        url: `/api/admin/system/custom-config/${encodeURIComponent(key)}`,
+        data,
+      })
+    },
+
+    async deleteCustomConfig(key: string): Promise<ApiResult<null>> {
+      return request<ApiResult<null>>({
+        method: 'delete',
+        url: `/api/admin/system/custom-config/${encodeURIComponent(key)}`,
       })
     },
   },

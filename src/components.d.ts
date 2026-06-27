@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AdminCategoryIcon: typeof import('./components/AdminCategoryIcon.vue')['default']
+    AlertNotification: typeof import('./components/AlertNotification.vue')['default']
     AppCard: typeof import('./components/AppCard.vue')['default']
     AppEmpty: typeof import('./components/AppEmpty.vue')['default']
     AppHeader: typeof import('./components/AppHeader.vue')['default']
@@ -63,8 +64,10 @@ declare module 'vue' {
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
     ElTabs: typeof import('element-plus/es')['ElTabs']
     ElTag: typeof import('element-plus/es')['ElTag']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     HelloWorld: typeof import('./components/HelloWorld.vue')['default']
+    MapPicker: typeof import('./components/MapPicker.vue')['default']
     PlaceholderPage: typeof import('./components/PlaceholderPage.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

@@ -4,11 +4,10 @@ import { Plus, Delete, Edit, RefreshRight } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import AppCard from '@/components/AppCard.vue'
 import AppHeader from '@/components/AppHeader.vue'
-import { getStorage, setStorage } from '@/utils/storage'
-import type { SystemSettings } from '@/api/types'
+import type { SystemSettings, CustomConfigItem } from '@/api/types'
 import type { FormInstance, FormRules } from 'element-plus'
 
-// ============ 系统设置 ============
+// ============ 系统设置（平台信息 / 财务 / 协议） ============
 const loading = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
@@ -17,6 +16,8 @@ const activeTab = ref('basic')
 const form = reactive<SystemSettings>({
   siteName: '',
   servicePhone: '',
+  logo: '',
+  icp: '',
   commissionRate: 0,
   minDeliveryFee: 0,
   riderShareRate: 0,
@@ -36,7 +37,9 @@ async function loadSettings() {
   loading.value = true
   try {
     const res = await api.system.getSettings()
-    Object.assign(form, res.data)
+    if (res.data) {
+      Object.assign(form, res.data)
+    }
   } finally {
     loading.value = false
   }
@@ -49,37 +52,30 @@ async function handleSave() {
   try {
     await api.system.saveSettings(form)
     ElMessage.success('保存成功')
+  } catch (e) {
+    // request 已统一处理错误提示
   } finally {
     saving.value = false
   }
 }
 
-// ============ 自定义配置项管理 ============
-interface ConfigItem {
-  id: string
-  key: string
-  label: string
-  value: string
-  category: string
-  remark?: string
-  createdAt: string
-  updatedAt: string
-}
-
-const CONFIG_STORAGE_KEY = 'system_custom_configs'
-
-const configItems = ref<ConfigItem[]>([])
+// ============ 自定义配置项管理（后端持久化） ============
+const configItems = ref<CustomConfigItem[]>([])
+const configLoading = ref(false)
+const configSaving = ref(false)
 const configSearchKey = ref('')
 const configSearchCategory = ref('')
 
 // 配置分类
 const configCategories = computed(() => {
   const set = new Set<string>(['基础', '财务', '运营', '安全', '其他'])
-  configItems.value.forEach((item) => set.add(item.category))
+  configItems.value.forEach((item) => {
+    if (item.category) set.add(item.category)
+  })
   return Array.from(set)
 })
 
-// 过滤后的配置项
+// 过滤后的配置项（前端二次过滤，后端也支持参数过滤）
 const filteredConfigItems = computed(() => {
   return configItems.value.filter((item) => {
     const matchKey =
@@ -91,22 +87,23 @@ const filteredConfigItems = computed(() => {
   })
 })
 
-// 加载配置项
-function loadConfigItems() {
-  configItems.value = getStorage<ConfigItem[]>(CONFIG_STORAGE_KEY) || []
-}
-
-// 持久化配置项
-function persistConfigItems() {
-  setStorage(CONFIG_STORAGE_KEY, configItems.value)
+// 加载配置项列表
+async function loadConfigItems() {
+  configLoading.value = true
+  try {
+    const res = await api.system.listCustomConfig()
+    configItems.value = res.data || []
+  } catch (e) {
+    // ignore
+  } finally {
+    configLoading.value = false
+  }
 }
 
 // 配置项编辑弹窗
 const configVisible = ref(false)
-const configSaving = ref(false)
 const configFormRef = ref<FormInstance>()
-const configForm = reactive({
-  id: '',
+const configForm = reactive<CustomConfigItem>({
   key: '',
   label: '',
   value: '',
@@ -114,6 +111,7 @@ const configForm = reactive({
   remark: '',
 })
 const isEditConfig = ref(false)
+const editingKey = ref('')
 
 const configRules: FormRules = {
   key: [
@@ -127,8 +125,8 @@ const configRules: FormRules = {
 
 function handleAddConfig() {
   isEditConfig.value = false
+  editingKey.value = ''
   Object.assign(configForm, {
-    id: '',
     key: '',
     label: '',
     value: '',
@@ -138,10 +136,10 @@ function handleAddConfig() {
   configVisible.value = true
 }
 
-function handleEditConfig(row: ConfigItem) {
+function handleEditConfig(row: CustomConfigItem) {
   isEditConfig.value = true
+  editingKey.value = row.key
   Object.assign(configForm, {
-    id: row.id,
     key: row.key,
     label: row.label,
     value: row.value,
@@ -155,64 +153,43 @@ async function handleSaveConfig() {
   const valid = await configFormRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  // 检查 key 唯一性
-  const duplicate = configItems.value.find(
-    (item) => item.key === configForm.key && item.id !== configForm.id
-  )
-  if (duplicate) {
-    ElMessage.error('配置键已存在')
-    return
-  }
-
   configSaving.value = true
   try {
-    const now = new Date().toISOString()
-    if (isEditConfig.value && configForm.id) {
-      const idx = configItems.value.findIndex((item) => item.id === configForm.id)
-      if (idx !== -1) {
-        configItems.value[idx] = {
-          ...configItems.value[idx],
-          key: configForm.key,
-          label: configForm.label,
-          value: configForm.value,
-          category: configForm.category,
-          remark: configForm.remark,
-          updatedAt: now,
-        }
-      }
+    if (isEditConfig.value) {
+      await api.system.updateCustomConfig(editingKey.value, configForm)
       ElMessage.success('更新成功')
     } else {
-      configItems.value.push({
-        id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        key: configForm.key,
-        label: configForm.label,
-        value: configForm.value,
-        category: configForm.category,
-        remark: configForm.remark,
-        createdAt: now,
-        updatedAt: now,
-      })
+      // 新增前前端二次校验 key 唯一性（后端也会校验）
+      const duplicate = configItems.value.find((item) => item.key === configForm.key)
+      if (duplicate) {
+        ElMessage.error('配置键已存在')
+        configSaving.value = false
+        return
+      }
+      await api.system.addCustomConfig(configForm)
       ElMessage.success('添加成功')
     }
-    persistConfigItems()
     configVisible.value = false
+    await loadConfigItems()
+  } catch (e) {
+    // ignore
   } finally {
     configSaving.value = false
   }
 }
 
-async function handleDeleteConfig(row: ConfigItem) {
+async function handleDeleteConfig(row: CustomConfigItem) {
   try {
     await ElMessageBox.confirm(`确定要删除配置项「${row.label}」吗？`, '提示', {
       type: 'warning',
       confirmButtonText: '确认',
       cancelButtonText: '取消',
     })
-    configItems.value = configItems.value.filter((item) => item.id !== row.id)
-    persistConfigItems()
+    await api.system.deleteCustomConfig(row.key)
     ElMessage.success('删除成功')
+    await loadConfigItems()
   } catch {
-    // 取消
+    // 取消或失败
   }
 }
 
@@ -233,15 +210,21 @@ onMounted(() => {
     <AppHeader title="系统设置" subtitle="配置平台基础参数与自定义配置项" />
 
     <el-tabs v-model="activeTab" class="system-tabs">
-      <!-- 基础设置 -->
-      <el-tab-pane label="基础设置" name="basic">
+      <!-- 平台信息（原"基础设置"） -->
+      <el-tab-pane label="平台信息" name="basic">
         <AppCard v-loading="loading">
           <el-form ref="formRef" :model="form" :rules="rules" label-width="140px" class="settings-form">
             <el-form-item label="平台名称" prop="siteName">
               <el-input v-model="form.siteName" placeholder="请输入平台名称" maxlength="30" show-word-limit />
             </el-form-item>
             <el-form-item label="客服电话" prop="servicePhone">
-              <el-input v-model="form.servicePhone" placeholder="请输入客服电话" />
+              <el-input v-model="form.servicePhone" placeholder="如 400-000-0000" />
+            </el-form-item>
+            <el-form-item label="平台LOGO" prop="logo">
+              <el-input v-model="form.logo" placeholder="LOGO图片URL（可选）" />
+            </el-form-item>
+            <el-form-item label="ICP备案号" prop="icp">
+              <el-input v-model="form.icp" placeholder="如 京ICP备XXXXXXXX号（可选）" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
@@ -255,17 +238,20 @@ onMounted(() => {
       <el-tab-pane label="财务设置" name="finance">
         <AppCard v-loading="loading">
           <el-form ref="formRef" :model="form" :rules="rules" label-width="140px" class="settings-form">
-            <el-form-item label="佣金比例" prop="commissionRate">
+            <el-form-item label="平台佣金比例" prop="commissionRate">
               <el-input-number v-model="form.commissionRate" :min="0" :max="100" :precision="2" :step="1" />
               <span class="form-unit">%</span>
+              <span class="form-hint">商家每笔订单需向平台支付的佣金比例</span>
             </el-form-item>
             <el-form-item label="最低配送费" prop="minDeliveryFee">
-              <el-input-number v-model="form.minDeliveryFee" :min="0" :step="100" />
-              <span class="form-unit">分</span>
+              <el-input-number v-model="form.minDeliveryFee" :min="0" :step="1" :precision="2" />
+              <span class="form-unit">元</span>
+              <span class="form-hint">用户支付的最低配送费用</span>
             </el-form-item>
             <el-form-item label="骑手分成比例" prop="riderShareRate">
               <el-input-number v-model="form.riderShareRate" :min="0" :max="100" :precision="2" :step="1" />
               <span class="form-unit">%</span>
+              <span class="form-hint">每单配送费中骑手所得比例</span>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
@@ -283,7 +269,7 @@ onMounted(() => {
               <el-input
                 v-model="form.userAgreement"
                 type="textarea"
-                :rows="8"
+                :rows="10"
                 placeholder="请输入用户协议内容"
                 maxlength="5000"
                 show-word-limit
@@ -293,7 +279,7 @@ onMounted(() => {
               <el-input
                 v-model="form.privacyPolicy"
                 type="textarea"
-                :rows="8"
+                :rows="10"
                 placeholder="请输入隐私政策内容"
                 maxlength="5000"
                 show-word-limit
@@ -333,7 +319,7 @@ onMounted(() => {
         </AppCard>
 
         <!-- 配置项列表 -->
-        <AppCard>
+        <AppCard v-loading="configLoading">
           <el-table :data="filteredConfigItems" stripe border>
             <el-table-column prop="key" label="配置键" min-width="160" />
             <el-table-column prop="label" label="配置名称" min-width="140" />
@@ -352,7 +338,7 @@ onMounted(() => {
               </template>
             </el-table-column>
             <template #empty>
-              <app-empty description="暂无自定义配置项" />
+              <el-empty description="暂无自定义配置项" />
             </template>
           </el-table>
         </AppCard>
@@ -416,6 +402,14 @@ onMounted(() => {
     .form-unit {
       margin-left: $spacing-sm;
       color: $text-muted;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: 4px;
+      color: $text-muted;
+      font-size: 12px;
+      line-height: 1.4;
     }
   }
 }

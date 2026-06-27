@@ -32,6 +32,11 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // 后端本地存储的静态资源（评价图片等）走代理，避免 el-image 相对路径 404
+      '/static': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   css: {

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import type { UserType } from '@/utils/constants'
 import { api } from '@/api'
-import { wsService } from '@/utils/websocket'
+import { prepareManualLogout } from '@/utils/request'
 
 export interface UserInfo {
   id: number
@@ -90,7 +90,8 @@ export const useUserStore = defineStore('user', () => {
    * 退出登录
    */
   async function logout() {
-    wsService.disconnect()
+    // 先标记正在登出，取消请求，断开 WS，防止后续 401 弹"登录已过期"
+    prepareManualLogout()
     try {
       await api.auth.logout()
     } catch {

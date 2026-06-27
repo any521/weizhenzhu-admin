@@ -4,6 +4,7 @@ import { Refresh, Search, RefreshRight } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import type { Order } from '@/api/types'
 import { formatAmount, formatDate, maskPhone } from '@/utils/format'
+import { formatDistance } from '@/utils/amap'
 import { OrderStatusMap, DEFAULT_PAGE_SIZE } from '@/utils/constants'
 import { wsService } from '@/utils/websocket'
 
@@ -70,7 +71,7 @@ function handleSizeChange() {
 
 // 查看详情
 function handleViewDetail(row: Order) {
-  ElMessage.info(`查看订单详情：${row.orderNo}`)
+  // TODO: 跳转到订单详情页（暂无详情页，预留入口）
 }
 
 // 接单
@@ -104,6 +105,27 @@ async function handleReject(row: Order) {
   } catch {
     // 用户取消操作
   }
+}
+
+// 骑手配送状态文案
+function getRiderStatusText(status: number): string {
+  const map: Record<number, string> = {
+    0: '待接单',
+    1: '已接单',
+    2: '已到店',
+    3: '已取餐',
+    4: '配送中',
+    5: '已送达',
+    6: '已取消',
+  }
+  return map[status] || '未知'
+}
+
+function getRiderStatusType(status: number): 'primary' | 'success' | 'warning' | 'info' {
+  if (status === 5) return 'success'
+  if (status === 6) return 'info'
+  if (status === 0) return 'warning'
+  return 'primary'
 }
 
 // 出餐完成
@@ -201,6 +223,20 @@ onMounted(() => {
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="骑手信息" width="180">
+          <template #default="{ row }">
+            <div v-if="row.riderName" class="rider-info">
+              <div class="rider-name">{{ row.riderName }}</div>
+              <div class="rider-phone">{{ maskPhone(row.riderPhone) }}</div>
+              <div v-if="row.deliveryTaskStatus !== undefined" class="rider-status">
+                <el-tag size="small" :type="getRiderStatusType(row.deliveryTaskStatus)">
+                  {{ getRiderStatusText(row.deliveryTaskStatus) }}
+                </el-tag>
+              </div>
+            </div>
+            <span v-else class="no-rider">暂无骑手</span>
+          </template>
+        </el-table-column>
         <el-table-column label="下单时间" width="170">
           <template #default="{ row }">
             {{ formatDate(row.createdAt || row.createTime) }}
@@ -255,5 +291,30 @@ onMounted(() => {
       color: $text-muted;
     }
   }
+}
+.rider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rider-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.rider-phone {
+  font-size: 12px;
+  color: #909399;
+}
+
+.rider-status {
+  margin-top: 2px;
+}
+
+.no-rider {
+  font-size: 12px;
+  color: #c0c4cc;
 }
 </style>

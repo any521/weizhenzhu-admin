@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Key, Message } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/store'
+import { api } from '@/api'
 import type { UserType } from '@/utils/constants'
 import { isPhone } from '@/utils/validator'
 
@@ -87,7 +88,7 @@ async function sendSmsCode() {
   }
   sendingCode.value = true
   try {
-    await useAppStore().$api?.auth?.sendSmsCode?.(form.account, props.userType)
+    await api.auth.sendSmsCode(form.account, props.userType)
     // 发送成功后启动倒计时
     countdown.value = 60
     const timer = setInterval(() => {
@@ -123,11 +124,11 @@ async function handleLogin() {
     appStore.setCurrentApp(type)
     appStore.setAppName(type === 'admin' ? '味真族管理平台' : '味真族商家后台')
 
-    ElMessage.success('登录成功')
+    // 登录成功后不弹 Toast，直接跳转
     const target = props.redirect || (type === 'admin' ? '/admin/dashboard' : '/merchant/dashboard')
     router.push(target)
   } catch (e: any) {
-    ElMessage.error(e?.message || '登录失败，请重试')
+
   } finally {
     loading.value = false
   }

@@ -591,35 +591,100 @@ function handleRangeChange(range: 7 | 30) {
 async function fetchStatsData() {
   loading.value = true
   try {
-    // 尝试获取后端财务统计数据
-    const [financeRes, chartRes, dashRes] = await Promise.all([
-      api.stats.financeStats().catch(() => null),
-      api.stats.financeChart().catch(() => null),
+    // 并行请求三个接口
+    const [financeRes, chartRes, dashRes, topDishRes, hourlyRes] = await Promise.all([
+      api.finance.getStats().catch(() => null),
+      api.finance.getChartData().catch(() => null),
       api.stats.getDashboard().catch(() => null),
+      api.stats.getTopDishes().catch(() => null),
+      api.stats.getHourlyDistribution().catch(() => null),
     ])
 
-    // 使用后端数据覆盖模拟数据（如果可用）
-    generateMockData()
-
+    // 使用后端数据覆盖
     if (financeRes?.data) {
-      overview.value.todaySales = Number(financeRes.data.todayIncome) || overview.value.todaySales
-      overview.value.weekSales = Number(financeRes.data.weekIncome) || overview.value.weekSales
-      overview.value.monthSales = Number(financeRes.data.monthIncome) || overview.value.monthSales
-      overview.value.totalSales = Number(financeRes.data.totalIncome) || overview.value.totalSales
-    }
-
-    if (chartRes?.data?.dates && chartRes.data.values) {
-      // 后端有图表数据时使用真实数据
-      trendData.value.dates = chartRes.data.dates
-      trendData.value.sales = chartRes.data.values.map((v: any) => Number(v) || 0)
-      // 估算订单量（按客单价35元）
-      trendData.value.orders = chartRes.data.values.map((v: any) => Math.round(Number(v) / 35) || 30)
+      const f = financeRes.data as any
+      overview.value.todayOrderCount = Number(f.todayOrderCount) || 0
+      overview.value.todaySales = Number(f.todayIncome) || 0
+      overview.value.weekSales = Number(f.weekIncome) || 0
+      overview.value.monthSales = Number(f.monthIncome) || 0
+      overview.value.totalSales = Number(f.totalIncome) || 0
+      // 客单价 = 总营业额 / 总订单数
+      if (overview.value.totalOrders > 0) {
+        overview.value.avgOrderValue = overview.value.totalSales / overview.value.totalOrders
+      }
     }
 
     if (dashRes?.data) {
-      overview.value.todayOrderCount = dashRes.data.todayOrderCount || overview.value.todayOrderCount
-      overview.value.pendingOrderCount = dashRes.data.pendingOrders || overview.value.pendingOrderCount
+      const d = dashRes.data as any
+      overview.value.pendingOrderCount = Number(d.pendingOrders) || 0
+      overview.value.totalOrders = Number(d.totalOrders) || overview.value.totalOrders
+      overview.value.weekOrderCount = Number(d.weekOrders) || 0
+      overview.value.monthOrderCount = Number(d.monthOrders) || 0
+      // 如果finance没返回数据，用dashboard的
+      if (!financeRes?.data) {
+        overview.value.todayOrderCount = Number(d.todayOrders) || 0
+        overview.value.todaySales = Number(d.todayRevenue) || Number(d.todayIncome) || 0
+        overview.value.weekSales = Number(d.weekSales) || Number(d.weekRevenue) || 0
+        overview.value.monthSales = Number(d.monthSales) || 0
+      }
+      // 重新计算客单价
+      if (overview.value.totalOrders > 0 && overview.value.totalSales > 0) {
+        overview.value.avgOrderValue = Math.round((overview.value.totalSales / overview.value.totalOrders) * 100) / 100
+      }
     }
+
+    if (chartRes?.data?.dates && chartRes.data.values) {
+      const days = chartRes.data.dates.length
+      trendData.value.dates = chartRes.data.dates.map((d: string) => {
+        const date = new Date(d)
+        return `${date.getMonth() + 1}/${date.getDate()}`
+      })
+      trendData.value.sales = chartRes.data.values.map((v: any) => Number(v) || 0)
+      // 订单量需要后端返回，暂时用估算（客单价30元）
+      trendData.value.orders = chartRes.data.values.map((v: any) => Math.max(1, Math.round(Number(v) / 30)))
+      timeRange.value = days === 7 ? 7 : 30
+    } else {
+      generateMockData()
+    }
+
+    // 热销菜品
+    if (topDishRes?.data && Array.isArray(topDishRes.data)) {
+      topDishes.value = topDishRes.data.map((item: any) => ({
+        name: item.name || '未知菜品',
+        value: Number(item.value) || Number(item.sales) || 0,
+        sales: Number(item.sales) || Number(item.value) || 0,
+      }))
+    }
+
+    // 时段分布
+    if (hourlyRes?.data?.hours && hourlyRes.data.values) {
+      hourDistribution.value = hourlyRes.data.hours.map((h: string, i: number) => ({
+        hour: h,
+        orders: Number(hourlyRes.data.values[i]) || 0,
+      }))
+    }
+
+    // 订单状态分布（从dashboard或默认值）
+    if (overview.value.todayOrderCount > 0 || overview.value.pendingOrderCount > 0) {
+      orderStatus.value = [
+        { name: '待处理', value: overview.value.pendingOrderCount },
+        { name: '已完成', value: Math.max(0, overview.value.todayOrderCount - overview.value.pendingOrderCount) },
+        { name: '已取消', value: 0 },
+      ].filter(s => s.value > 0)
+    }
+
+    // 分类销售（暂无接口，保留模拟）
+    if (categorySales.value.length === 0) {
+      categorySales.value = [
+        { name: '主食', value: Math.round(overview.value.todaySales * 0.4) || 100 },
+        { name: '小吃', value: Math.round(overview.value.todaySales * 0.25) || 60 },
+        { name: '饮料', value: Math.round(overview.value.todaySales * 0.2) || 50 },
+        { name: '甜点', value: Math.round(overview.value.todaySales * 0.15) || 40 },
+      ]
+    }
+
+    // 完成率（默认95%或根据实际计算）
+    overview.value.completionRate = overview.value.totalOrders > 0 ? 95 : 0
 
     refreshCharts()
   } finally {

@@ -32,12 +32,12 @@ async function fetchFinanceData() {
       api.finance.getReport(page.value, pageSize.value),
     ])
     const stats: FinanceStats = statsRes.data
-    const platformFee = Math.floor(stats.totalIncome * 0.05)
+    const platformFee = stats.platformFee || 0
 
     summary.value = {
       totalIncome: stats.totalIncome,
       platformFee,
-      actualIncome: stats.totalIncome - platformFee,
+      actualIncome: (stats.totalIncome || 0) - (stats.platformFee || 0),
       refundAmount: stats.refundAmount,
     }
 

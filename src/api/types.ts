@@ -44,9 +44,30 @@ export interface Merchant {
   id: number
   name: string
   logo?: string
-  contactPerson: string
+  contactPerson?: string
+  province?: string
+  city?: string
+  district?: string
   address: string
+  longitude?: number
+  latitude?: number
   phone: string
+  /** 店铺简介 */
+  description?: string
+  /** 店铺公告 */
+  notice?: string
+  /** 营业时间 */
+  openTime?: string
+  /** 是否营业：1营业 0休息 */
+  isOpen?: number
+  /** 起送价 */
+  minOrderAmount?: number
+  /** 配送费 */
+  deliveryFee?: number
+  /** 打包费 */
+  packingFee?: number
+  /** 配送半径(米) */
+  deliveryRadius?: number
   status: number
   auditStatus: number
   operateStatus: number
@@ -55,6 +76,10 @@ export interface Merchant {
   monthlySales?: number
   createTime: string
   qualification?: string
+  /** 商家类目ID */
+  categoryId?: number
+  /** 商家类目名称 */
+  categoryName?: string
   /** 是否支持外卖配送：1支持 0不支持 */
   supportDelivery?: number
   /** 是否支持到店自取：1支持 0不支持 */
@@ -180,10 +205,15 @@ export interface Review {
   id: number
   orderId?: number
   orderNo?: string
+  userId?: number
   userName?: string
   userNickname?: string
   userAvatar?: string
+  merchantId?: number
   merchantName?: string
+  deliveryManId?: number
+  deliveryManName?: string
+  dishNames?: string[]
   rating: number
   tasteScore?: number
   packingScore?: number
@@ -191,10 +221,13 @@ export interface Review {
   content: string
   reply?: string
   merchantReply?: string
+  merchantReplyTime?: string
   images?: string[]
   tags?: string[]
+  anonymous?: number
   status?: number
-  createTime: string
+  createdAt: string
+  createTime?: string
 }
 
 // 财务统计
@@ -333,13 +366,30 @@ export interface FinanceReport {
 
 // 系统设置
 export interface SystemSettings {
+  // 平台信息
   siteName: string
   servicePhone: string
+  logo?: string
+  icp?: string
+  // 财务设置
   commissionRate: number
   minDeliveryFee: number
   riderShareRate: number
+  // 协议管理
   userAgreement: string
   privacyPolicy: string
+}
+
+// 自定义配置项
+export interface CustomConfigItem {
+  id?: string
+  key: string
+  label: string
+  value: string
+  category: string
+  remark?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 // 促销活动

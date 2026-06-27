@@ -6,19 +6,21 @@ export const UserTypeMap: Record<UserType, string> = {
   admin: '管理员',
 }
 
-// 订单状态
+// 订单状态（统一新状态码）
 export const OrderStatus = {
-  PENDING_PAY: 0,      // 待支付
-  PENDING_ACCEPT: 1,   // 待接单
-  MERCHANT_ACCEPTED: 2,// 商家已接单
-  RIDER_ACCEPTED: 3,   // 骑手已接单
-  PICKED_UP: 4,        // 已取餐
-  DELIVERING: 5,       // 配送中
-  DELIVERED: 6,        // 已送达
-  COMPLETED: 7,        // 已完成
-  CANCELLED: 8,        // 已取消
-  REFUNDING: 9,        // 退款中
-  REFUNDED: 10,        // 已退款
+  PENDING_PAY: 0,       // 待支付
+  PENDING_ACCEPT: 1,    // 待接单
+  MERCHANT_ACCEPTED: 2, // 备餐中（商家已接单）
+  RIDER_ACCEPTED: 3,    // 骑手已接单
+  /** @deprecated 已废弃，旧数据code=4统一映射为PREPARING(2) */
+  WAITING_RIDER: 4,     // 等待骑手（已废弃，兼容旧数据）
+  DELIVERING: 5,        // 配送中
+  DELIVERED: 6,         // 已送达
+  COMPLETED: 7,         // 已完成
+  CANCELLED: 8,         // 已取消
+  REFUNDING: 9,         // 退款中
+  REFUNDED: 10,         // 已退款
+  RIDER_ARRIVED: 11,    // 骑手已到店
 } as const
 
 export type OrderStatusType = (typeof OrderStatus)[keyof typeof OrderStatus]
@@ -26,15 +28,32 @@ export type OrderStatusType = (typeof OrderStatus)[keyof typeof OrderStatus]
 export const OrderStatusMap: Record<number, string> = {
   [OrderStatus.PENDING_PAY]: '待支付',
   [OrderStatus.PENDING_ACCEPT]: '待接单',
-  [OrderStatus.MERCHANT_ACCEPTED]: '商家已接单',
+  [OrderStatus.MERCHANT_ACCEPTED]: '备餐中',
+  4: '备餐中', // 旧数据兼容：WAITING_RIDER 统一显示为备餐中
   [OrderStatus.RIDER_ACCEPTED]: '骑手已接单',
-  [OrderStatus.PICKED_UP]: '已取餐',
+  [OrderStatus.RIDER_ARRIVED]: '骑手已到店',
   [OrderStatus.DELIVERING]: '配送中',
   [OrderStatus.DELIVERED]: '已送达',
   [OrderStatus.COMPLETED]: '已完成',
   [OrderStatus.CANCELLED]: '已取消',
   [OrderStatus.REFUNDING]: '退款中',
   [OrderStatus.REFUNDED]: '已退款',
+}
+
+/** 订单状态标签类型（用于Element Plus Tag颜色） */
+export const OrderStatusTagType: Record<number, '' | 'success' | 'warning' | 'info' | 'danger' | 'primary'> = {
+  [OrderStatus.PENDING_PAY]: 'warning',
+  [OrderStatus.PENDING_ACCEPT]: 'danger',
+  [OrderStatus.MERCHANT_ACCEPTED]: 'warning',
+  4: 'warning', // 旧数据兼容：与备餐中同色
+  [OrderStatus.RIDER_ACCEPTED]: 'primary',
+  [OrderStatus.RIDER_ARRIVED]: 'primary',
+  [OrderStatus.DELIVERING]: 'danger',
+  [OrderStatus.DELIVERED]: 'success',
+  [OrderStatus.COMPLETED]: 'info',
+  [OrderStatus.CANCELLED]: 'info',
+  [OrderStatus.REFUNDING]: 'danger',
+  [OrderStatus.REFUNDED]: 'info',
 }
 
 // 审核状态

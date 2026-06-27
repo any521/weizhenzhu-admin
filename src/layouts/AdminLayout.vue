@@ -5,6 +5,7 @@ import { Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore, useAppStore } from '@/store'
 import type { UserType } from '@/utils/constants'
 import { wsService } from '@/utils/websocket'
+import AlertNotification from '@/components/AlertNotification.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -122,23 +123,37 @@ watch(
   { immediate: true }
 )
 
-// 商家端进入时连接WebSocket，退出时断开
-onMounted(() => {
-  if (userType.value === 'merchant') {
-    wsService.connect()
+/**
+ * 根据当前用户类型连接对应的WebSocket
+ * - 商家端：/ws/merchant/orders（新订单通知）
+ * - 管理端：/ws/admin/notifications（系统告警通知）
+ */
+function connectWsForCurrentUser() {
+  const type = userType.value
+  if (type === 'merchant' || type === 'admin') {
+    wsService.connectForUser(type)
   }
+}
+
+onMounted(() => {
+  connectWsForCurrentUser()
 })
 
 onUnmounted(() => {
-  wsService.disconnect()
+  wsService.disconnectAll()
 })
 
-// 监听用户类型变化，商家端才连接
+// 监听用户类型变化，切换WS连接
 watch(userType, (newType, oldType) => {
-  if (newType === 'merchant' && oldType !== 'merchant') {
-    wsService.connect()
-  } else if (newType !== 'merchant') {
-    wsService.disconnect()
+  if (newType !== oldType) {
+    // 先断开旧连接
+    if (oldType) {
+      wsService.disconnect(oldType)
+    }
+    // 连接新端点
+    if (newType === 'merchant' || newType === 'admin') {
+      wsService.connectForUser(newType)
+    }
   }
 })
 </script>
@@ -215,6 +230,9 @@ watch(userType, (newType, oldType) => {
         </div>
 
         <div class="header-right">
+          <!-- 管理端告警通知铃铛 -->
+          <AlertNotification v-if="userType === 'admin'" />
+
           <span class="app-name">{{ appStore.appName }}</span>
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-info">
@@ -396,5 +414,4 @@ watch(userType, (newType, oldType) => {
     }
   }
 }
-
 </style>
